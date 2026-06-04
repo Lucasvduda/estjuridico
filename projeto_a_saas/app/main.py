@@ -125,22 +125,13 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if not settings.debug:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    # CSP com nonce dinâmico para scripts — bloqueia XSS de scripts inline não autorizados
-    # Em debug, mantém 'unsafe-inline' para facilitar o desenvolvimento
-    if settings.debug:
-        csp_script = "'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net"
-        csp_style = "'self' 'unsafe-inline' https://fonts.googleapis.com"
-    else:
-        nonce = _secrets.token_urlsafe(16)
-        csp_script = f"'self' 'nonce-{nonce}' https://unpkg.com https://cdn.jsdelivr.net"
-        csp_style = f"'self' 'nonce-{nonce}' https://fonts.googleapis.com"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        f"script-src {csp_script}; "
-        f"style-src {csp_style}; "
+        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; "
-        "connect-src 'self'; "
+        "connect-src 'self' https://unpkg.com https://cdn.jsdelivr.net; "
         "frame-ancestors 'none'"
     )
     return response
