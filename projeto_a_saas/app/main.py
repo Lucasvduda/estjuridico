@@ -65,9 +65,9 @@ async def lifespan(app: FastAPI):
     await init_redis_pool()
     await log.ainfo("Pool Redis inicializado")
 
-    if settings.debug:
-        await init_db()
-        await log.ainfo("Banco de dados inicializado (modo debug)")
+    # Cria tabelas se não existirem (seguro em produção — CREATE IF NOT EXISTS)
+    await init_db()
+    await log.ainfo("Banco de dados inicializado")
 
     yield
 
