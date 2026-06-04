@@ -45,7 +45,7 @@ envVarGroups:
       - key: R2_SECRET_ACCESS_KEY
         sync: false
       - key: R2_BUCKET_NAME
-        value: legalshield-contracts
+        value: estjuridico-contratos
 
 databases:
   - name: legalshield-db
