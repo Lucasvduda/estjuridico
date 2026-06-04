@@ -41,7 +41,12 @@ const API = {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            const msg = errorData.detail || `Erro ${response.status}`;
+            let msg = `Erro ${response.status}`;
+            if (typeof errorData.detail === 'string') {
+                msg = errorData.detail;
+            } else if (Array.isArray(errorData.detail)) {
+                msg = errorData.detail.map(e => e.msg || e.message || JSON.stringify(e)).join('; ');
+            }
             throw new Error(msg);
         }
 
