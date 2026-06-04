@@ -1,26 +1,22 @@
 # LegalShield AI — Blueprint Render (Infrastructure-as-Code)
 #
-# Estratégia de privacidade:
-#   - Bytes do contrato NÃO ficam armazenados em disco/S3.
-#   - Vivem no Redis com TTL 30 min (CONTRACT_CACHE_TTL_SECONDS) e somem sozinhos.
-#   - Apenas o relatório (achados, score, resumo, recomendações) é persistido no Postgres.
+# PLANO: TESTE (gratuito/mínimo) — upgrade depois pelo painel do Render
+#
+# Para escalar, basta trocar os planos no painel do Render:
+#   - API:    free → starter ($7) → standard ($25, com autoscaling)
+#   - Worker: starter ($7) → standard ($25, com autoscaling)
+#   - DB:     free → basic ($7) → standard ($20)
+#   - Redis:  free → starter ($10) → standard ($30)
 #
 # Cria:
-#   - legalshield-api      : Web Service (FastAPI, autoscale 1→4)
-#   - legalshield-worker   : Background Worker (Arq, autoscale 1→10)
+#   - legalshield-api      : Web Service (FastAPI)
+#   - legalshield-worker   : Background Worker (Arq)
 #   - legalshield-db       : Postgres gerenciado
-#   - legalshield-redis    : Redis (fila + cache temporário dos bytes)
+#   - legalshield-redis    : Redis (fila + referências R2)
 #   - legalshield-secrets  : Env Group com segredos compartilhados
-#
-# Como usar:
-#   1. Subir este repositório no GitHub.
-#   2. Render -> New + -> Blueprint -> conectar repo -> Apply.
-#   3. Definir vars sensíveis marcadas com sync: false no painel (uma vez só,
-#      no Env Group legalshield-secrets).
 
 # ---------------------------------------------------------------------------
-# Env Group compartilhado — segredos preenchidos UMA VEZ no Dashboard
-# e injetados automaticamente nos dois serviços via fromGroup.
+# Env Group compartilhado
 # ---------------------------------------------------------------------------
 envVarGroups:
   - name: legalshield-secrets
@@ -30,14 +26,13 @@ envVarGroups:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ENCRYPTION_MASTER_KEY
-        sync: false           # gerar: openssl rand -base64 32
+        sync: false
       - key: CORS_ORIGINS
-        sync: false           # ex: ["https://app.seudominio.com.br"]
+        sync: false
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_INITIAL_PASSWORD
         sync: false
-      # Cloudflare R2 — object storage para bytes dos contratos em produção
       - key: R2_ACCOUNT_ID
         sync: false
       - key: R2_ACCESS_KEY_ID
@@ -51,40 +46,34 @@ databases:
   - name: legalshield-db
     databaseName: legalshield_saas
     user: legalshield
-    plan: basic-256mb         # subir para standard quando crescer
-    region: frankfurt          # mais próximo do BR (LGPD); pode usar oregon se preferir
+    plan: free                    # grátis (90 dias, depois upgrade para basic $7)
+    region: oregon                # free só disponível em oregon
 
 services:
   # ---------------------------------------------------------------------------
-  # API Web (FastAPI / Uvicorn) — recebe HTTP, enfileira no Redis
+  # API Web (FastAPI / Uvicorn)
   # ---------------------------------------------------------------------------
   - type: web
     name: legalshield-api
     runtime: docker
-    region: frankfurt
-    plan: standard             # standard obrigatório para autoscaling funcionar
+    region: oregon                # free só disponível em oregon
+    plan: free                    # grátis (dorme após 15 min sem uso, acorda ao acessar)
     rootDir: projeto_a_saas
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     autoDeploy: true
-    scaling:
-      minInstances: 1
-      maxInstances: 4
-      targetCPUPercent: 60
-      targetMemoryPercent: 75
     envVars:
       - key: ROLE
         value: api
       - key: UVICORN_WORKERS
-        value: "2"
+        value: "1"                # 1 worker para plano free (menos memória)
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
         value: "false"
       - key: STORAGE_BACKEND
-        value: r2               # produção usa R2 (10k usuários)
+        value: r2
 
-      # Banco e Redis (preenchidos automaticamente pelo Render)
       - key: DATABASE_URL
         fromDatabase:
           name: legalshield-db
@@ -95,92 +84,11 @@ services:
           name: legalshield-redis
           property: connectionString
 
-      # Cache temporário dos bytes do contrato (30 min)
       - key: CONTRACT_CACHE_TTL_SECONDS
         value: "1800"
-
-      # Gerado automaticamente pelo Render no primeiro deploy
       - key: JWT_SECRET_KEY
         generateValue: true
-
-      # Segredos compartilhados (preenchidos no Env Group acima)
       - fromGroup: legalshield-secrets
-
-      # Modelos LLM
-      - key: LLM_PRIMARY_MODEL
-        value: openai/gpt-4o
-      - key: LLM_FALLBACK_MODEL
-        value: anthropic/claude-sonnet-4-5
-      - key: LLM_MAX_TOKENS
-        value: "4096"
-      - key: LLM_TEMPERATURE
-        value: "0.1"
-
-      # Pool DB
-      - key: DB_POOL_SIZE
-        value: "10"
-      - key: DB_MAX_OVERFLOW
-        value: "5"
-
-      # Rate limiting
-      - key: RATE_LIMIT_REQUESTS_PER_MINUTE
-        value: "60"
-      - key: RATE_LIMIT_ANALYSES_PER_HOUR
-        value: "20"
-
-      # Limite de upload
-      - key: MAX_FILE_SIZE_MB
-        value: "25"
-
-  # ---------------------------------------------------------------------------
-  # Worker Background (Arq) — consome fila Redis e chama LLMs
-  # ---------------------------------------------------------------------------
-  - type: worker
-    name: legalshield-worker
-    runtime: docker
-    region: frankfurt
-    plan: standard             # standard obrigatório para autoscaling funcionar
-    rootDir: projeto_a_saas
-    dockerfilePath: ./Dockerfile
-    autoDeploy: true
-    scaling:
-      minInstances: 1
-      maxInstances: 10          # cada worker faz ~4 jobs em paralelo
-      targetCPUPercent: 70
-      targetMemoryPercent: 80
-    envVars:
-      - key: ROLE
-        value: worker
-      - key: ENVIRONMENT
-        value: production
-      - key: DEBUG
-        value: "false"
-      - key: STORAGE_BACKEND
-        value: r2               # produção usa R2 (10k usuários)
-
-      - key: DATABASE_URL
-        fromDatabase:
-          name: legalshield-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: legalshield-redis
-          property: connectionString
-
-      # Mesmo TTL da API — worker sabe quando a chave pode ter expirado
-      - key: CONTRACT_CACHE_TTL_SECONDS
-        value: "1800"
-
-      # Segredos compartilhados (preenchidos no Env Group acima)
-      - fromGroup: legalshield-secrets
-
-      - key: WORKER_CONCURRENCY
-        value: "4"
-      - key: WORKER_MAX_JOBS_PER_MINUTE
-        value: "60"             # respeita TPM da OpenAI (ajuste conforme tier)
-      - key: WORKER_JOB_TIMEOUT
-        value: "600"
 
       - key: LLM_PRIMARY_MODEL
         value: openai/gpt-4o
@@ -196,17 +104,75 @@ services:
       - key: DB_MAX_OVERFLOW
         value: "3"
 
+      - key: RATE_LIMIT_REQUESTS_PER_MINUTE
+        value: "60"
+      - key: RATE_LIMIT_ANALYSES_PER_HOUR
+        value: "20"
+      - key: MAX_FILE_SIZE_MB
+        value: "10"               # menor para plano free (economiza memória)
+
   # ---------------------------------------------------------------------------
-  # Redis (Key Value) — fila Arq + cache temporário dos bytes do contrato
-  #
-  # ATENÇÃO: dimensionar o plano com cuidado. Cada contrato em análise ocupa
-  # tantos bytes quanto o próprio PDF (criptografado, AES-GCM ~ +30 bytes overhead).
-  # Com MAX_FILE_SIZE_MB=25 e ~10 contratos simultâneos esperados em pico,
-  # plano Standard 1 GB já cobre bem.
+  # Worker Background (Arq)
+  # ---------------------------------------------------------------------------
+  - type: worker
+    name: legalshield-worker
+    runtime: docker
+    region: oregon
+    plan: starter                 # $7/mês — worker não tem plano free no Render
+    rootDir: projeto_a_saas
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: ROLE
+        value: worker
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: STORAGE_BACKEND
+        value: r2
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: legalshield-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: legalshield-redis
+          property: connectionString
+
+      - key: CONTRACT_CACHE_TTL_SECONDS
+        value: "1800"
+      - fromGroup: legalshield-secrets
+
+      - key: WORKER_CONCURRENCY
+        value: "2"                # menos concorrência para plano starter
+      - key: WORKER_MAX_JOBS_PER_MINUTE
+        value: "30"
+      - key: WORKER_JOB_TIMEOUT
+        value: "600"
+
+      - key: LLM_PRIMARY_MODEL
+        value: openai/gpt-4o
+      - key: LLM_FALLBACK_MODEL
+        value: anthropic/claude-sonnet-4-5
+      - key: LLM_MAX_TOKENS
+        value: "4096"
+      - key: LLM_TEMPERATURE
+        value: "0.1"
+
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
+
+  # ---------------------------------------------------------------------------
+  # Redis (Key Value)
   # ---------------------------------------------------------------------------
   - type: redis
     name: legalshield-redis
-    region: frankfurt
-    plan: standard              # 1 GB — comporta picos de upload e fila Arq
-    ipAllowList: []             # vazio = só rede privada Render (mais seguro)
+    region: oregon
+    plan: free                    # grátis (25 MB — suficiente com R2 para bytes)
+    ipAllowList: []
     maxmemoryPolicy: allkeys-lru
