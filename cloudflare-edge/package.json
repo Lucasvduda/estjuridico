@@ -1,0 +1,20 @@
+{
+  "name": "legalshield-edge-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev --remote",
+    "deploy": "wrangler deploy",
+    "deploy:dry": "wrangler deploy --dry-run",
+    "types": "wrangler types",
+    "secret:backend": "wrangler secret put RENDER_BACKEND_URL",
+    "kv:create": "wrangler kv namespace create RATE_LIMIT_KV",
+    "kv:create:preview": "wrangler kv namespace create RATE_LIMIT_KV --preview",
+    "logs": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260523.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.93.1"
+  }
+}

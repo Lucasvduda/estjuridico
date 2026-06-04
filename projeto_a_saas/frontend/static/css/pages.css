@@ -1,0 +1,258 @@
+/* ===================================================
+   LegalShield AI — Page-Specific Styles
+   =================================================== */
+
+/* === Dashboard Page === */
+.dashboard-welcome {
+    margin-bottom: var(--space-6);
+}
+.dashboard-welcome h2 {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--space-1);
+}
+.dashboard-welcome p {
+    color: var(--text-secondary);
+}
+
+.recent-analyses .analysis-mini-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background var(--transition-fast);
+    cursor: pointer;
+}
+.recent-analyses .analysis-mini-row:hover { background: var(--glass-hover); }
+.recent-analyses .analysis-mini-row:last-child { border-bottom: none; }
+
+/* === Contracts Page === */
+.contracts-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+    flex-wrap: wrap;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    max-width: 350px;
+}
+.search-box svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary);
+}
+.search-box input {
+    padding-left: 38px;
+}
+
+.tag-selector {
+    display: flex;
+    gap: var(--space-2);
+}
+.tag-option {
+    padding: 6px 14px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-family);
+}
+.tag-option:hover { border-color: var(--color-primary); }
+.tag-option.active { background: var(--color-primary-light); border-color: var(--color-primary); color: var(--color-primary); }
+
+/* === Analysis Result Page === */
+.analysis-result-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-8);
+    margin-bottom: var(--space-8);
+    flex-wrap: wrap;
+}
+
+.analysis-summary {
+    flex: 1;
+    min-width: 300px;
+}
+
+.analysis-summary .executive-summary {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    line-height: 1.7;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.analysis-meta {
+    display: flex;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+    margin-top: var(--space-6);
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+.meta-item .meta-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+}
+.meta-item .meta-value {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+}
+
+/* === Admin Dashboard === */
+.admin-metrics {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-2);
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+.period-selector {
+    display: flex;
+    gap: var(--space-2);
+}
+
+/* === Admin Tenants === */
+.tenant-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: var(--space-2);
+}
+.tenant-status-dot.active { background: var(--color-success); box-shadow: 0 0 6px var(--color-success); }
+.tenant-status-dot.blocked { background: var(--color-danger); box-shadow: 0 0 6px var(--color-danger); }
+.tenant-status-dot.suspended { background: var(--color-warning); }
+
+/* === Admin Models === */
+.model-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.model-provider-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+}
+
+.provider-status {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.provider-status.configured { background: var(--color-success); box-shadow: 0 0 8px var(--color-success); }
+.provider-status.not-configured { background: var(--color-danger); opacity: 0.5; }
+
+/* === Admin Testing === */
+.test-result-panel {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-top: var(--space-6);
+}
+
+.test-result-panel pre {
+    background: var(--bg-primary);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* === Admin Theme === */
+.theme-preview {
+    width: 100%;
+    height: 200px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+    position: relative;
+}
+
+.theme-preview-sidebar {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 60px;
+}
+
+.theme-preview-content {
+    margin-left: 60px;
+    height: 100%;
+    padding: var(--space-4);
+}
+
+.theme-preview-card {
+    height: 40px;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-2);
+}
+
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-4);
+}
+
+.preset-card {
+    padding: var(--space-4);
+    border: 2px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+.preset-card:hover { border-color: var(--color-primary); }
+.preset-card.active { border-color: var(--color-primary); background: var(--color-primary-light); }
+
+.preset-colors {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: center;
+    margin-bottom: var(--space-2);
+}
+.preset-color-dot {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--glass-border);
+}
+
+.preset-card .preset-name {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+}

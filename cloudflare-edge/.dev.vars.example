@@ -1,0 +1,4 @@
+# Copiar para .dev.vars (ignorado pelo git) e preencher para desenvolvimento local
+# Em produção, usar: npx wrangler secret put RENDER_BACKEND_URL
+
+RENDER_BACKEND_URL=https://legalshield-api.onrender.com

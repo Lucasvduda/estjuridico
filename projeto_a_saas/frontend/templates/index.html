@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LegalShield AI — Plataforma SaaS de Análise Jurídica com Inteligência Artificial">
+    <title>LegalShield AI — Análise Jurídica com IA</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Polyfill inline: garante safeIcons() mesmo se CDN falhar.
+         Os scripts async abaixo sobrescrevem quando chegarem. -->
+    <script>
+        window.lucide = window.lucide || { createIcons: function() {} };
+        window.Chart  = window.Chart  || null;
+        function safeIcons() {
+            try { lucide.createIcons({ attrs: { class: '' }, nameAttr: 'data-lucide' }); } catch(e) {}
+        }
+    </script>
+
+    <!-- CDN async: baixa em paralelo, NÃO bloqueia parsing nem DOMContentLoaded -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" async></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/variables.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <link rel="stylesheet" href="/static/css/pages.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-logo">
+            <div class="loading-icon">
+                <i data-lucide="shield-check"></i>
+            </div>
+            <h1>LegalShield AI</h1>
+            <p>Carregando sistema...</p>
+            <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+        </div>
+    </div>
+
+    <!-- App Shell -->
+    <div id="app" class="app" style="display:none;">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i data-lucide="shield-check"></i>
+                    <span>LegalShield AI</span>
+                </div>
+                <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+                    <i data-lucide="panel-left-close"></i>
+                </button>
+            </div>
+
+            <nav id="sidebar-nav" class="sidebar-nav">
+                <!-- Populated by JS based on role -->
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user" id="sidebar-user">
+                    <div class="avatar"><i data-lucide="user"></i></div>
+                    <div class="user-info">
+                        <span class="user-name" id="user-name">—</span>
+                        <span class="user-role" id="user-role">—</span>
+                    </div>
+                    <button id="btn-logout" class="btn-icon" title="Sair">
+                        <i data-lucide="log-out"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="main-content">
+            <header id="page-header" class="page-header">
+                <div class="header-left">
+                    <button id="mobile-menu-btn" class="btn-icon mobile-only" aria-label="Menu">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <h1 id="page-title" class="page-title">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div id="header-actions"></div>
+                </div>
+            </header>
+            <div id="page-content" class="page-content">
+                <!-- Pages render here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Auth Screen (Login/Register) -->
+    <div id="auth-screen" class="auth-screen" style="display:none;">
+        <div class="auth-container">
+            <div class="auth-brand">
+                <div class="auth-logo">
+                    <i data-lucide="shield-check"></i>
+                </div>
+                <h1>LegalShield AI</h1>
+                <p>Análise Jurídica Inteligente</p>
+            </div>
+            <div id="auth-form-container" class="auth-form-container">
+                <!-- Login/Register forms rendered by JS -->
+            </div>
+        </div>
+        <div class="auth-bg-decoration">
+            <div class="auth-bg-circle auth-bg-circle-1"></div>
+            <div class="auth-bg-circle auth-bg-circle-2"></div>
+            <div class="auth-bg-circle auth-bg-circle-3"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Modal Container -->
+    <div id="modal-overlay" class="modal-overlay" style="display:none;">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+
+    <!-- Scripts locais: sem defer/async — rodam inline, em ordem, DOM já tem
+         todos os elementos acima (loading-screen, app, auth-screen, etc.) -->
+    <script src="/static/js/store.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/components.js"></script>
+    <script src="/static/js/pages/dashboard.js"></script>
+    <script src="/static/js/pages/contracts.js"></script>
+    <script src="/static/js/pages/analysis.js"></script>
+    <script src="/static/js/pages/history.js"></script>
+    <script src="/static/js/pages/admin_dashboard.js"></script>
+    <script src="/static/js/pages/admin_tenants.js"></script>
+    <script src="/static/js/pages/admin_models.js"></script>
+    <script src="/static/js/pages/admin_testing.js"></script>
+    <script src="/static/js/pages/admin_audit.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

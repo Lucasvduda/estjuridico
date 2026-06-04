@@ -1,0 +1,132 @@
+# ============================================================
+# LegalShield AI — .gitignore Seguro
+# ============================================================
+
+# ==============================
+# 🔐 CREDENCIAIS E SEGREDOS
+# ==============================
+# Nunca commitar arquivos de ambiente
+.env
+**/.env
+.env.*
+!.env.example
+
+# Pasta de administração — contém credenciais sensíveis
+adm/
+!adm/.gitkeep
+
+# Credenciais e segredos avulsos
+**/CREDENCIAIS*
+**/credenciais*
+**/*secrets*
+**/*SECRETS*
+**/*.key
+**/*.pem
+**/*.cert
+
+# Variáveis de ambiente do Cloudflare Worker
+cloudflare-edge/.dev.vars
+
+# ==============================
+# 🗄️ BANCOS DE DADOS LOCAIS
+# ==============================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ==============================
+# 🐍 PYTHON
+# ==============================
+# Ambiente virtual
+projeto_a_saas/venv/
+projeto_b_enterprise/venv/
+**/venv/
+**/.venv/
+
+# Cache Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Distribuição
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# ==============================
+# 📦 NODE.JS
+# ==============================
+**/node_modules/
+cloudflare-edge/.wrangler/
+package-lock.json
+yarn.lock
+
+# ==============================
+# 📁 UPLOADS E ARQUIVOS TEMPORÁRIOS
+# ==============================
+projeto_a_saas/uploads/*
+!projeto_a_saas/uploads/.gitkeep
+**/tmp/
+**/temp/
+
+# ==============================
+# 💻 SISTEMA OPERACIONAL
+# ==============================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.nfs*
+
+# ==============================
+# 🛠️ EDITORES/IDEs
+# ==============================
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.orig
+
+# Cursor AI
+.cursor/
+
+# ==============================
+# 🐳 DOCKER
+# ==============================
+docker-compose.local.yml
+docker-compose.override.yml
+
+# ==============================
+# 📋 LOGS
+# ==============================
+*.log
+logs/

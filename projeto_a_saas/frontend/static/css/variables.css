@@ -1,0 +1,126 @@
+/* ===================================================
+   LegalShield AI — Design Tokens
+   Variáveis CSS para todo o sistema
+   =================================================== */
+
+:root {
+    /* === Cores Primárias (sobrescritas por white-label via JS) === */
+    --color-primary: #6C5CE7;
+    --color-primary-hover: #5A4BD6;
+    --color-primary-light: rgba(108, 92, 231, 0.15);
+    --color-primary-glow: rgba(108, 92, 231, 0.4);
+
+    --color-accent: #00D2D3;
+    --color-accent-hover: #00B8B9;
+    --color-accent-light: rgba(0, 210, 211, 0.15);
+
+    /* === Backgrounds === */
+    --bg-primary: #0F0F23;
+    --bg-secondary: #161637;
+    --bg-tertiary: #1C1C4A;
+    --bg-card: rgba(28, 28, 74, 0.6);
+    --bg-card-hover: rgba(40, 40, 90, 0.7);
+    --bg-sidebar: #1A1A2E;
+    --bg-input: rgba(255, 255, 255, 0.05);
+    --bg-input-focus: rgba(255, 255, 255, 0.08);
+
+    /* === Glass === */
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-hover: rgba(255, 255, 255, 0.07);
+
+    /* === Texto === */
+    --text-primary: #F0F0FF;
+    --text-secondary: #A0A0C0;
+    --text-tertiary: #6B6B8D;
+    --text-inverse: #0F0F23;
+
+    /* === Status === */
+    --color-success: #00B894;
+    --color-success-light: rgba(0, 184, 148, 0.15);
+    --color-warning: #FDCB6E;
+    --color-warning-light: rgba(253, 203, 110, 0.15);
+    --color-danger: #FF6B6B;
+    --color-danger-light: rgba(255, 107, 107, 0.15);
+    --color-info: #74B9FF;
+    --color-info-light: rgba(116, 185, 255, 0.15);
+
+    /* === Tags de Contrato === */
+    --tag-existente: #74B9FF;
+    --tag-existente-bg: rgba(116, 185, 255, 0.15);
+    --tag-enviar: #00B894;
+    --tag-enviar-bg: rgba(0, 184, 148, 0.15);
+    --tag-receber: #FDCB6E;
+    --tag-receber-bg: rgba(253, 203, 110, 0.15);
+
+    /* === Severidade === */
+    --severity-critico: #FF4757;
+    --severity-critico-bg: rgba(255, 71, 87, 0.15);
+    --severity-alto: #FF6B6B;
+    --severity-alto-bg: rgba(255, 107, 107, 0.15);
+    --severity-medio: #FDCB6E;
+    --severity-medio-bg: rgba(253, 203, 110, 0.15);
+    --severity-baixo: #00B894;
+    --severity-baixo-bg: rgba(0, 184, 148, 0.15);
+
+    /* === Tipografia === */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.8125rem;
+    --font-size-base: 0.875rem;
+    --font-size-md: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.5rem;
+    --font-size-2xl: 2rem;
+    --font-size-3xl: 2.5rem;
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+
+    /* === Espaçamento === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+
+    /* === Bordas === */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+    --border-width: 1px;
+
+    /* === Sombras === */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px var(--color-primary-glow);
+
+    /* === Transições === */
+    --transition-fast: 150ms ease;
+    --transition-base: 250ms ease;
+    --transition-slow: 400ms ease;
+    --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* === Layout === */
+    --sidebar-width: 260px;
+    --sidebar-collapsed: 72px;
+    --header-height: 64px;
+    --content-max-width: 1400px;
+
+    /* === Z-Index === */
+    --z-sidebar: 100;
+    --z-header: 90;
+    --z-modal: 200;
+    --z-toast: 300;
+    --z-loading: 400;
+}

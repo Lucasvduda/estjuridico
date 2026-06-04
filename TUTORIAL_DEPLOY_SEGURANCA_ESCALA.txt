@@ -1,0 +1,1219 @@
+================================================================================
+  LEGALSHIELD AI — TUTORIAL COMPLETO
+  Do zero ao site no ar: desenvolvimento local, servidor, segurança, custos e escala
+================================================================================
+
+Versão: 1.5 (Maio 2026)
+Foco principal: projeto SaaS em projeto_a_saas/
+Referência Enterprise (on-premise): projeto_b_enterprise/
+
+
+================================================================================
+REFERÊNCIA DE CUSTOS (QUANTO PODE SAIR) — VALORES APROXIMADOS
+================================================================================
+
+ATENÇÃO: preços de VPS, dólar e APIs de IA mudam o tempo todo. Use esta tabela
+como ordem de grandeza para orçamento (Brasil / Maio 2026), não como orçamento
+contratual. Confira sempre o site do provedor no dia da compra.
+
+--- Ambiente só no seu computador (desenvolvimento / testes) -----------------
+
+  Infraestrutura (servidor na nuvem)         R$ 0/mês
+  Domínio                                    Opcional (só precisa se testar DNS)
+  APIs OpenAI / Anthropic                    Paga conforme uso (pós-pago ou
+                                             créditos — ver painel de cada um)
+
+  Ou seja: você só gasta o que consumir de IA + energia elétrica do PC.
+
+--- Stack mínima em produção (um VPS pequeno rodando Docker Compose) ----------
+
+  Item                           Faixa mensal (R$)    Observação
+  -----------------------------  -------------------  -------------------------
+  VPS 1 vCPU, 2 GB RAM           ~40 a 120            Hetzner/Linode/DO BR ou EU;
+                                                    Oracle “Always Free” pode
+                                                    ser R$ 0 mas com limites.
+  VPS 2 vCPU, 4 GB RAM           ~90 a 250            Confortável para começar
+                                                    com tráfego moderado.
+  Domínio .com.br (Registro.br)  ~3 a 5 / mês        Cobrança anual (~40/ano)
+  Cloudflare (proteção DNS)      R$ 0                Plano Free costuma bastar
+  Certificado HTTPS              R$ 0                Let’s Encrypt incluso no
+                                                    Nginx/Caddy
+
+  TOTAL FIXO TÍPICO (só infra)   ~50 a 300 / mês    Sem contar IA.
+
+--- Custos que mais variam: INTELIGÊNCIA ARTIFICIAL ---------------------------
+
+  O LegalShield chama modelos pagos (OpenAI, Anthropic, etc.). Esse custo
+  costuma ser MAIOR que o VPS quando há muitas análises.
+
+  Ordem de grandeza (exemplo ilustrativo — confira preço por token no site):
+
+    Uso leve (testes, poucos usuários)      dezenas a poucas centenas R$/mês
+    Uso médio (escritório ativo)            centenas a poucos mil R$/mês
+    Uso intenso (muitas análises longas)    pode passar de milhares R$/mês
+
+  Proteção obrigatória: limite de gasto mensal + alertas nos painéis OpenAI e
+  Anthropic (Parte 5 deste tutorial).
+
+--- Quando “escalar” (mais usuários = mais conta de servidor) -----------------
+
+  Cenário                         Infra extra típica          Faixa (R$/mês)
+  ------------------------------  -------------------------  ---------------
+  Subir CPU/RAM no mesmo VPS      Upgrade de plano           +50 a +400
+  Segunda VM só para API          Outro VPS ou réplica       +80 a +300+
+  PostgreSQL gerenciado           RDS / Cloud SQL etc.       +150 a +800+
+  Load balancer (nuvem)           Depende do provedor        +30 a +200+
+
+  Em geral: comece com um VPS pequeno (linha ~100–200 R$/mês), monitore CPU e
+  fatura de IA, e só então aumente máquina ou coloque segunda réplica.
+
+--- Resumo para “quanto custa no total?” -------------------------------------
+
+  Mês típico de produção pequena:
+    Infra (VPS + domínio + Cloudflare)     ~80 a 250 R$
+    IA (OpenAI/Anthropic)                  variável — pode ser 0 em teste
+                                           sem uso, ou dominar a conta
+
+  Regra: o custo fixo baixo + variável de IA proporcional ao uso é exatamente
+  o modelo “poucos usuários barato, muitos uso de IA paga mais”.
+
+  Passo a passo nos sites de cada serviço (DNS, VPS, Docker, chaves de IA):
+  • Iniciantes absolutos: “GUIA PARA INICIANTES ABSOLUTOS”, no final deste arquivo.
+  • Resumo rápido: “GUIA DOS SITES (VERSÃO CURTA)” na mesma área final.
+
+
+================================================================================
+PARTE 1 — CONCEITOS PARA QUEM NUNCA RODOU UM SERVIDOR
+================================================================================
+
+Domínio
+  É o endereço que as pessoas digitam no navegador, por exemplo:
+  https://app.suaempresa.com.br
+
+DNS (Domain Name System)
+  É o serviço que associa o nome do domínio ao IP do servidor. Você configura
+  no provedor onde comprou o domínio (Registro.br, Cloudflare, etc.).
+
+IP
+  É o número do seu servidor na internet (ex.: 203.0.113.10). O DNS aponta
+  o domínio para esse IP.
+
+Porta 443 (HTTPS)
+  É a porta padrão para tráfego web criptografado. Sem HTTPS, senhas e tokens
+  trafegam em texto — em produção sempre use HTTPS.
+
+Firewall
+  É uma “grade” que decide quais portas do servidor ficam abertas para o mundo.
+  Na prática: só abra 80 e 443 para o público; SSH (22) restrito ao seu IP.
+
+Desenvolvimento (seu PC) vs Produção (servidor na nuvem)
+  • Desenvolvimento: você altera código, testa rápido, pode usar SQLite local.
+  • Produção: código estável, PostgreSQL, HTTPS, backups, limites de uso.
+
+VPS (Virtual Private Server)
+  É um “computador virtual” alugado (DigitalOcean, Hetzner, Oracle Cloud, etc.).
+  Você controla o sistema operacional e instala Docker, Nginx, etc.
+
+PaaS (Platform as a Service)
+  Plataforma que empacota deploy (menos trabalho manual, menos controle).
+  Este tutorial foca em VPS + Docker, que combina com o docker-compose do projeto.
+
+  >>> ALTERNATIVA RECOMENDADA PARA QUEM QUER MENOS DOR DE CABEÇA:
+  >>> ver arquivo TUTORIAL_RENDER_ESCALA.md (Render + Cloudflare R2),
+  >>> que mostra uma arquitetura com fila assíncrona suportando até 100k
+  >>> análises enfileiradas, com custo proporcional ao uso (autoscaling).
+
+Fluxo resumido — o que acontece quando alguém abre o site
+  1) O navegador pergunta ao DNS “qual é o IP de app.seudominio.com.br?”.
+  2) O DNS responde com o IP do seu VPS (ou da Cloudflare, que depois fala com
+     seu servidor).
+  3) O pedido HTTPS chega na porta 443 do servidor (Nginx ou Caddy).
+  4) O proxy encaminha para a API FastAPI (neste projeto, em geral porta 8000).
+  5) A API pode ler/escrever no PostgreSQL e usar Redis; para análises, chama
+     as APIs OpenAI/Anthropic pela internet.
+
+  Se algo falhar, anote em qual passo parou (DNS, certificado, firewall, Docker,
+  banco, IA) — isso acelera o diagnóstico.
+
+
+================================================================================
+PARTE 2 — AMBIENTE LOCAL (ALTERAR CÓDIGO E TESTAR)
+================================================================================
+
+Pré-requisitos no Windows (ou Mac/Linux)
+  • Python 3.10 ou superior (python --version)
+    Download oficial: https://www.python.org/downloads/
+    No instalador Windows marque “Add Python to PATH”. Depois: python --version
+  • Git (opcional mas recomendado)
+    Download: https://git-scm.com/downloads
+    Depois de instalar: git --version
+
+Passo a passo rápido — modo mais simples (SQLite, sem Docker)
+
+  1) Abra o terminal na pasta do projeto SaaS:
+
+     cd caminho\para\Juridico_IA\projeto_a_saas
+
+  2) Execute o assistente (cria venv, instala dependências, gera .env se faltar):
+
+     python run_server.py --local
+
+     O script sobe o FastAPI em http://0.0.0.0:8000 — no navegador use:
+     http://localhost:8000
+
+  3) Edite o arquivo .env na mesma pasta (projeto_a_saas\.env) e defina pelo
+     menos:
+
+     DEBUG=true
+     JWT_SECRET_KEY=<uma string longa e aleatória>
+     ENCRYPTION_MASTER_KEY=<chave base64 de 32 bytes — o gerador do run_server
+                            pode criar uma no primeiro setup>
+     OPENAI_API_KEY=sk-...
+     ANTHROPIC_API_KEY=sk-ant-...   (opcional mas recomendado para fallback)
+
+     Para desenvolvimento local, DATABASE_URL pode apontar para SQLite (o script
+     --local já orienta isso).
+
+  4) Fluxo de trabalho diário
+     • Altere código em app/ (backend) ou frontend/ (SPA estática + templates)
+     • Com --reload ativo, o servidor recarrega ao salvar arquivos
+     • Teste login, upload de contrato e análise pela interface
+
+Comandos manuais (se não quiser usar run_server.py)
+
+  cd projeto_a_saas
+  python -m venv venv
+  venv\Scripts\activate          (Linux/Mac: source venv/bin/activate)
+  pip install -r requirements.txt
+  copy .env.example .env         (se existir; senão crie .env conforme config)
+  uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+Documentação interativa da API (só com DEBUG=true)
+  http://localhost:8000/docs
+
+Dados de demonstração (opcional)
+  Com o .env configurado e o banco acessível, na pasta projeto_a_saas:
+
+     python seed_demo.py
+
+  Isso popula dados de exemplo (tenants, usuários, etc.) para testar painéis.
+  Em SQLite local funciona direto; com Postgres, DATABASE_URL no .env deve
+  apontar para o banco correto.
+
+Segurança do repositório
+  Não commite o arquivo .env (credenciais). Use .gitignore na raiz do projeto
+  para ignorar .env e mantenha um .env.example sem segredos para outros
+  desenvolvedores.
+
+Problemas comuns no Windows (desenvolvimento)
+  • “Port already in use” na 8000 — outro programa está usando a porta. Feche-o
+    ou suba em outra porta (ajuste no run_server.py / uvicorn).
+  • python não reconhecido — reinstale Python marcando “Add to PATH” ou use
+    py -3 run_server.py --local
+  • Erro ao instalar pacotes — atualize pip: python -m pip install -U pip
+    e repita pip install -r requirements.txt dentro do venv ativado.
+  • Firewall do Windows bloqueando — em testes locais raro; se acessar de outro
+    PC na rede, pode ser necessário liberar a porta 8000 nas regras do firewall.
+
+
+================================================================================
+PARTE 3 — PRIMEIRO DEPLOY EM SERVIDOR (UM VPS, BAIXO CUSTO)
+================================================================================
+
+Objetivo: seu domínio abre o LegalShield com HTTPS, com o mínimo de peças.
+
+Ordem recomendada (evita refazer passos)
+  1) Criar VPS, SSH, instalar Docker, copiar projeto.
+  2) Ajustar senhas no docker-compose e variáveis (passos 4–5 abaixo).
+  3) Subir containers e testar no servidor com curl em http://127.0.0.1:8000
+     (health da API) antes de mexer em domínio.
+  4) Apontar DNS (registro A) para o IP do VPS e esperar propagar (minutos a
+     poucas horas). Sem o DNS correto, o Certbot/Let’s Encrypt não valida o
+     domínio para HTTPS.
+  5) Instalar Nginx ou Caddy, obter certificado e só então expor ao público.
+
+Arquitetura sugerida (simples)
+
+  Internet --> Cloudflare (opcional mas recomendado) --> Nginx/Caddy (HTTPS)
+           --> Docker: API (FastAPI) + PostgreSQL + Redis
+
+1) Contratar um VPS Linux (Ubuntu 22.04 LTS é comum)
+   • Comece pequeno: 1–2 vCPU, 2–4 GB RAM, SSD
+   • Região próxima aos seus usuários (latência menor)
+   • Anote o IP público do servidor
+
+   Onde contratar (escolha um; cada um tem tutorial “criar VPS” no próprio site):
+     https://www.hetzner.com/cloud
+     https://www.digitalocean.com/
+     https://www.linode.com/
+     https://www.oracle.com/cloud/free/   (tier gratuito com limites)
+
+   No painel (após criar conta): “Create” / “Create Droplet” / “Create Linode”
+   → escolha Ubuntu 22.04 LTS → região → tamanho → adicione sua chave SSH pública
+   → crie a máquina e copie o IP público.
+
+2) No primeiro login (SSH e preparação do servidor)
+   • No Windows use PowerShell: ssh usuario@IP_DO_SERVIDOR
+     Na primeira vez aparece pergunta sobre fingerprint — digite yes se o IP for
+     o do seu provedor. Ou cliente gráfico: https://winscp.net/ (arquivos).
+
+   • Crie usuário não-root com sudo (exemplo — troque nomedousuario):
+
+       sudo adduser nomedousuario
+       sudo usermod -aG sudo nomedousuario
+       # opcional: sudo usermod -aG docker nomedousuario   (depois de instalar Docker)
+
+     Saia e entre de novo com: ssh nomedousuario@IP_DO_SERVIDOR
+
+   • Atualize o sistema:
+
+       sudo apt update && sudo apt upgrade -y
+
+   • Firewall (UFW — Ubuntu): libere só o necessário. Exemplo típico:
+
+       sudo ufw allow OpenSSH
+       sudo ufw allow 80/tcp
+       sudo ufw allow 443/tcp
+       sudo ufw enable
+       sudo ufw status
+
+     Não exponha a porta 5432 (Postgres) ou 6379 (Redis) para a internet; o
+     compose pode mapear essas portas para debug — em produção restrinja ou
+     remova o mapeamento público no docker-compose.yml.
+
+   • Instale Docker e Docker Compose plugin seguindo a documentação oficial:
+
+     https://docs.docker.com/engine/install/ubuntu/
+
+     Depois valide: docker --version e docker compose version
+
+3) Copiar o projeto para o servidor
+   Opção A — Git:
+     git clone <seu-repositorio>
+     cd Juridico_IA/projeto_a_saas
+
+   Opção B — compactar no PC e enviar com scp/winscp para /home/seuusuario/
+
+4) Criar .env no servidor e alinhar com o Docker Compose (NUNCA commitar .env)
+
+   O arquivo app/config.py (Pydantic) lê variáveis do .env. No deploy Docker,
+   preste atenção ao que o próprio docker-compose.yml injeta no container.
+
+   ATENÇÃO — senha do Postgres no compose atual:
+     No projeto_a_saas/docker-compose.yml o serviço “api” costuma ter a variável
+     DATABASE_URL fixa no YAML, e o serviço “db” define POSTGRES_PASSWORD. Em
+     produção você deve:
+       • Trocar POSTGRES_PASSWORD no serviço db para uma senha forte;
+       • Colocar a MESMA senha na URL em DATABASE_URL do serviço api no mesmo
+         arquivo (usuário e nome do banco devem bater com POSTGRES_USER /
+         POSTGRES_DB);
+       • Ou refatorar o compose para usar ${DATABASE_URL} e ${POSTGRES_PASSWORD}
+         a partir do .env (aí um único .env centraliza tudo).
+
+     Se a senha no YAML e no banco não coincidirem, a API falha ao conectar.
+
+   Exemplo de variáveis no .env do servidor (ajuste nomes se o código evoluir):
+
+     JWT_SECRET_KEY=<aleatório longo — use openssl rand -hex 32 ou similar>
+     ENCRYPTION_MASTER_KEY=<base64 32 bytes — não reutilize de desenvolvimento>
+     OPENAI_API_KEY=sk-...
+     ANTHROPIC_API_KEY=sk-ant-...
+     # CORS: lista JSON; domínio exato do front em HTTPS
+     CORS_ORIGINS=["https://app.seudominio.com.br"]
+
+   DEBUG em produção deve ser false (via compose ou env, conforme seu Dockerfile).
+
+   Variáveis como DATABASE_URL no .env só surtem efeito no container se o
+   docker-compose.yml passar ${DATABASE_URL} para o serviço api — confira o
+   arquivo antes do deploy.
+
+5) Subir os containers (na pasta projeto_a_saas onde está o docker-compose.yml)
+
+     docker compose build
+     docker compose up -d
+
+   Verificar se subiram:
+
+     docker compose ps
+     docker compose logs -f api
+
+   Teste rápido na própria máquina (sem domínio ainda):
+
+     curl -sS http://127.0.0.1:8000/health
+
+     Deve retornar JSON. Se falhar, veja logs: docker compose logs api db
+
+   Para testar de fora (só enquanto ajusta rede), alguns provedores exigem abrir
+   a porta 8000 no firewall — não é ideal em produção; o objetivo final é só
+   80/443 com Nginx/Caddy na frente.
+
+6) Reverse proxy com HTTPS (escolha UM dos dois)
+
+   --- Opção A: Caddy (simples, HTTPS automático) ---
+
+   Instalação e docs: https://caddyserver.com/docs/install
+   Instale Caddy no host. Exemplo de bloco Caddyfile (ajuste domínio e porta):
+
+     app.seudominio.com.br {
+       reverse_proxy localhost:8000
+     }
+
+   Recarregue o Caddy. A API continua escutando 8000 no host; o compose já
+   publica "8000:8000" — em produção costuma-se remover a porta pública do
+   container e deixar só Nginx/Caddy falando com a API em rede interna; para o
+   primeiro deploy, proxy para localhost:8000 já funciona.
+
+   --- Opção B: Nginx + Certbot (Let’s Encrypt) ---
+
+   Gerador de comandos (escolha Nginx + seu sistema): https://certbot.eff.org/
+   • Instale nginx e certbot (pacotes do sistema ou snap conforme o site acima)
+   • Crie um server block HTTP inicial com server_name app.seudominio.com.br e
+     proxy_pass http://127.0.0.1:8000; teste nginx -t e systemctl reload nginx
+   • Obtenha certificado: sudo certbot --nginx -d app.seudominio.com.br
+     (Certbot costuma ajustar o bloco para HTTPS automaticamente)
+   • Ative limites e tamanho de upload (veja Parte 5 e exemplo abaixo)
+
+   Exemplo de trecho útil dentro de server { } após TLS (ajuste caminhos se o
+   Certbot usar outro layout):
+
+     location / {
+       proxy_pass http://127.0.0.1:8000;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+     }
+
+   Os cabeçalhos X-Forwarded-* ajudam o FastAPI a saber que o cliente veio por
+   HTTPS e qual era o host original (útil para CORS e cookies em alguns setups).
+
+7) DNS
+   Domínio .br: painel em https://registro.br/ (login com certificado ou credenciais).
+   Cloudflare: https://dash.cloudflare.com/ — após adicionar o domínio, use os
+   nameservers que a Cloudflare indicar (troca no Registro.br em “DNS” / delegação).
+
+   No painel DNS (Registro.br ou Cloudflare), crie um registro A para
+   app.seudominio.com.br apontando para o IP do VPS (ou CNAME conforme o provedor).
+   Se usar Cloudflare com proxy (nuvem laranja), espere alguns minutos pela propagação.
+
+Checklist de segurança mínima neste deploy
+  • DEBUG=false em produção (com isso, /docs e /redoc ficam desligados no app)
+  • CORS só com o domínio real do front
+  • Firewall: liberar 80, 443; SSH (22) só do seu IP se possível
+  • Trocar senhas padrão do PostgreSQL do compose (YAML + mesmo valor na URL)
+  • Manter backups (Parte 7)
+
+Problemas comuns nesta fase
+  • Certificado não emite — DNS ainda não aponta para este servidor ou porta 80
+    bloqueada; verifique com dig app.seudominio.com.br ou nslookup.
+  • 502 Bad Gateway — API não está em 127.0.0.1:8000 (compose parado) ou Nginx
+    aponta para porta errada.
+  • CORS error no navegador — CORS_ORIGINS no .env não inclui exatamente a URL
+    do front (http vs https, domínio com ou sem www).
+  • “Permission denied” no Docker — usuário não está no grupo docker ou usa sudo.
+
+
+================================================================================
+PARTE 4 — CUSTOS PROPORCIONAIS AO USO (POUCOS USUÁRIOS BARATO, MUITOS ESCALA)
+================================================================================
+
+  Valores aproximados em R$ (VPS, domínio, IA): veja "REFERÊNCIA DE CUSTOS"
+  no início deste arquivo.
+
+Ideia central
+  • Poucos usuários: uma VM pequena + um banco + Redis pequeno = conta modesta.
+  • Muitos usuários: você aumenta CPU/RAM ou adiciona mais cópias da API atrás
+    de um balanceador — não precisa começar com servidor gigante.
+
+Camadas de custo (do mais barato ao mais caro em geral)
+
+  1) Servidor (VPS)
+     Escala vertical: aumentar vCPU/RAM no mesmo provedor quando CPU ficar alta
+     ou a latência subir de forma consistente.
+
+  2) API da aplicação
+     O Dockerfile do SaaS já usa vários workers Uvicorn (--workers 4). Para mais
+     tráfego, pode aumentar workers com cautela (cada worker usa RAM) ou subir
+     mais containers da API atrás de Nginx com load balancing.
+
+  3) Banco de dados
+     No início, Postgres no mesmo compose funciona. Com muitos clientes e
+     escrita intensa, migrar para PostgreSQL gerenciado (RDS, Cloud SQL, etc.)
+     reduz dor operacional e permite escalar armazenamento separado.
+
+  4) Redis
+     Necessário para filas/cache em cenários mais avançados; o compose já traz
+     Redis para a stack.
+
+  5) INTELIGÊNCIA ARTIFICIAL (OpenAI / Anthropic)
+     Este costuma ser o maior custo variável: cada análise chama modelos pagos.
+     Limitar análises por tenant/plano e monitorar uso é mais importante do que
+     só aumentar o tamanho do VPS.
+
+Regra prática
+  Comece barato, monitore CPU, RAM, disco e fatura das APIs de IA, e só então
+  escale. Não fixe “tamanho de servidor” para sempre — o mercado de VPS muda.
+
+
+================================================================================
+PARTE 5 — LIMITE DE GASTOS E PROTEÇÃO CONTRA ATAQUES / SOBRECARGA
+================================================================================
+
+A) Na borda (Internet) — Cloudflare (ou similar)
+
+  Recomendado mesmo no plano gratuito:
+  • Proxy ativado no DNS (nuvem laranja)
+  • SSL/TLS — modos (SSL/TLS → Overview):
+      Off — não use em produção.
+      Flexible — tráfego usuário↔Cloudflare criptografado, mas Cloudflare↔seu
+        servidor pode ir em HTTP; não é ideal se você já tem HTTPS no origin.
+      Full — Cloudflare fala com seu servidor por HTTPS, mas aceita certificado
+        autoassinado no origin (menos rigoroso).
+      Full (strict) — Cloudflare exige certificado válido no seu Nginx/Caddy;
+        use este modo depois que Let’s Encrypt estiver funcionando no VPS.
+
+  • Opcional: em Security → WAF ou Rules, rate limiting por IP (planos pagos
+    têm mais opções; no Free dá para mitigar com regras simples em alguns casos).
+  • Opcional pago: WAF mais completo e analytics avançados.
+
+  Isso absorve parte de DDoS e scan automatizado antes de bater no seu VPS.
+
+B) No reverse proxy — Nginx (exemplo de ideias; ajuste limites ao seu tráfego)
+
+  A zona de rate limit precisa ficar no contexto http { } (arquivo principal
+  nginx.conf ou arquivo incluído em /etc/nginx/conf.d/). Exemplo:
+
+    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+
+  Dentro do server { } que faz proxy para a API:
+
+    client_max_body_size 25m;
+    proxy_read_timeout 120s;
+    proxy_connect_timeout 10s;
+
+  Dentro do location / { } (junto com proxy_pass):
+
+    limit_req zone=api_limit burst=20 nodelay;
+
+  Depois de editar: sudo nginx -t && sudo systemctl reload nginx
+
+  Isso evita que um único IP dispare milhares de requisições por segundo e
+  dispare CPU ou custo de APIs internas. Ajuste rate e burst ao seu caso — APIs
+  com muitos assets estáticos podem precisar de burst maior ou rotas separadas.
+
+C) Na aplicação (LegalShield SaaS)
+
+  O arquivo app/config.py define entre outros:
+    rate_limit_requests_per_minute
+    rate_limit_analyses_per_hour
+    max_file_size_mb
+
+  Verifique no código se esses valores estão realmente aplicados nas rotas que
+  você precisa proteger. O projeto registra handler do SlowAPI em main.py; para
+  rate limit efetivo em todas as rotas sensíveis, pode ser necessário ampliar o
+  uso do Limiter nas rotas — consulte a documentação do SlowAPI.
+
+  Kill-switch por tenant (middleware) funciona melhor com Redis conectado.
+  Hoje o middleware pode estar com redis_client=None — para produção, conecte
+  um cliente Redis real ao subir o app.
+
+D) Limites de gasto nas APIs de IA (essencial para não estourar orçamento)
+
+  OpenAI
+    • Site: https://platform.openai.com/
+    • API keys: https://platform.openai.com/api-keys
+    • Billing / limites de uso: https://platform.openai.com/settings/organization/billing
+      (Usage / Limits — limite mensal de gasto e alertas por email)
+
+  Anthropic
+    • Console: https://console.anthropic.com/
+    • Crie projeto, gere API key e configure billing / limites no próprio console.
+
+  Isso protege você mesmo se um ataque gerar muitas chamadas à IA ou se um
+  usuário abusar.
+
+E) Conta na nuvem (VPS / AWS / GCP)
+
+  Onde o provedor permitir, ative:
+  • Alertas de fatura
+  • Orçamento mensal com notificação
+  Assim a “máquina” não sobe de preço sem você perceber.
+
+
+================================================================================
+PARTE 6 — PROJETO ENTERPRISE (ON-PREMISE, UM CLIENTE = UM SERVIDOR)
+================================================================================
+
+O projeto_b_enterprise é pensado para instalação no servidor do próprio
+cliente (advocacia, empresa), com licenciamento e BYOK (chaves de IA do cliente).
+
+Fluxo típico (resumo)
+  1) Servidor Linux com Docker (conforme Dockerfile / docker-compose do projeto)
+  2) Configurar .env com credenciais admin, JWT, caminhos de banco e uploads
+  3) Colocar license.key e chave pública conforme ferramentas do pacote
+  4) HTTPS na frente (Nginx/Caddy) como no SaaS
+  5) Backups do SQLite e volumes de upload/relatórios
+
+Escalabilidade
+  Sem multi-tenant: para mais usuários internos, aumente recursos da VM ou
+  réplicas da API com balanceador, sempre com backup do banco antes de mudanças
+  grandes.
+
+
+================================================================================
+PARTE 7 — CHECKLIST FINAL “100% OPERANTE”
+================================================================================
+
+  [ ] Domínio apontando para o IP correto (DNS propagado)
+  [ ] HTTPS funcionando (cadeado verde no navegador)
+  [ ] GET https://seu-dominio/health retorna JSON de saúde
+  [ ] Login na aplicação web ok
+  [ ] Upload de contrato e análise de ponta a ponta ok
+  [ ] DEBUG=false em produção; documentação /docs desligada em produção
+  [ ] CORS contendo apenas origens confiáveis
+  [ ] Senhas fortes no Postgres (não usar senhas de exemplo do compose em produção)
+  [ ] Firewall: apenas portas necessárias abertas
+  [ ] Limites na Cloudflare e/ou Nginx configurados
+  [ ] Limites de gasto + alertas em OpenAI e Anthropic
+  [ ] Backup automático do PostgreSQL (dump agendado) e da pasta de uploads
+  [ ] Procedimento de atualização documentado: git pull, docker compose build,
+      docker compose up -d, verificar logs
+
+Backup do PostgreSQL (detalhe operacional)
+  Com os containers no ar e na pasta projeto_a_saas (ajuste usuário se mudou no YAML):
+
+    docker compose exec db pg_dump -U legalshield legalshield_saas > backup_$(date +%F).sql
+
+  Restaurar (exemplo — pare a API se necessário para evitar escritas concorrentes):
+
+    docker compose exec -T db psql -U legalshield legalshield_saas < backup_2026-05-09.sql
+
+  Agende o dump com cron no servidor (crontab -e), guardando cópias fora do VPS
+  (outro disco, S3, outro provedor). Teste restauração em ambiente de homologação
+  antes de precisar em emergência.
+
+  Volume de uploads: o compose costuma usar volume Docker nomeado “uploads”.
+  Liste o caminho real com docker volume inspect ou faça backup copiando do
+  container: docker compose cp api:/app/uploads ./backup_uploads
+
+Atualização da aplicação (roteiro)
+  cd /caminho/projeto_a_saas
+  git pull
+  docker compose build --no-cache api
+  docker compose up -d
+  docker compose logs -f api --tail=100
+
+  Se houver migrações de banco no projeto, rode-as conforme a documentação do
+  repositório antes ou depois do up -d.
+
+
+================================================================================
+O QUE O CÓDIGO AINDA NÃO FAZ SOZINHO (TRANSPARÊNCIA)
+================================================================================
+
+Leia esta seção antes de prometer algo a cliente ou investidor.
+
+1) SlowAPI
+   O handler de erro de rate limit está registrado no app, mas verifique se as
+   rotas críticas usam decoradores / Limiter conforme a prática do SlowAPI.
+   Mesmo assim, Nginx + Cloudflare continuam recomendados na frente.
+
+2) Redis no Kill-switch
+   O middleware de kill-switch está preparado para Redis; em main.py o cliente
+   Redis pode estar None. Para bloqueio rápido de tenant em produção, conecte
+   Redis de verdade ao iniciar a aplicação.
+
+3) Limites de plano / análises por tenant
+   Há estrutura de negócio para limites; confirme no código atual se todos os
+   caminhos de API aplicam o limite que você vendeu no contrato.
+
+4) Custos de IA
+   O sistema não substitui os limites do painel OpenAI/Anthropic — configure-os
+   sempre.
+
+
+================================================================================
+COMANDOS ÚTEIS — COLA RÁPIDA (LINUX NO SERVIDOR)
+================================================================================
+
+Ver logs da stack SaaS
+  cd /caminho/projeto_a_saas
+  docker compose logs -f api
+
+Logs só dos últimos 200 eventos (menos ruído)
+  docker compose logs api --tail=200
+
+Reiniciar só a API após mudar .env
+  docker compose up -d --build api
+
+Entrar no shell do container da API (debug)
+  docker compose exec api sh
+
+Status de disco e memória
+  df -h
+  free -h
+
+Parar tudo
+  docker compose down
+
+Parar e remover volumes (CUIDADO: apaga dados dos volumes nomeados)
+  docker compose down -v
+
+Limpar imagens antigas (libera espaço; não apaga volumes por padrão)
+  docker system prune -a
+
+Inspecionar rede entre containers
+  docker compose ps
+  docker network ls
+
+Testar API localmente no servidor
+  curl -sS http://127.0.0.1:8000/health
+
+Testar pelo domínio público
+  curl -sS https://app.seudominio.com.br/health
+
+
+================================================================================
+APÊNDICE — MONITORAMENTO SIMPLES E ALERTAS
+================================================================================
+
+  • No provedor de VPS, ative alertas de uso de CPU/RAM/disco e de fatura.
+  • Olhe docker compose logs periodicamente após deploy ou sob picos de uso.
+  • Para IA: painéis OpenAI/Anthropic mostram consumo — cruze com picos de
+    tráfego na API para detectar abuso ou bug que dispara muitas chamadas.
+
+
+================================================================================
+GUIA PARA INICIANTES ABSOLUTOS — O QUE É CADA COISA E O QUE CLICAR EM CADA SITE
+================================================================================
+
+Esta parte é para quem nunca comprou domínio, nunca alugou servidor e nunca
+digitou comandos no Linux. Vá devagar: um passo de cada vez; confira se
+funcionou antes de seguir.
+
+--- O que ter à mão antes de começar ------------------------------------------------
+
+  • Um email que você abre todo dia (cadastros mandam confirmação).
+  • Forma de pagamento aceita pelos sites (cartão, PIX, etc., conforme cada um).
+  • Para domínio .br: CPF ou CNPJ — o Registro.br exige dados do titular.
+  • Papel ou gerenciador de senhas: anote logins, IP do servidor, usuário Linux.
+    Sem isso você pode perder o acesso ao servidor ou ao domínio.
+
+--- Glossário em uma página (leia uma vez e volte quando esquecer) ---------------
+
+  Domínio — O nome que as pessoas digitam no navegador. Você “aluga” esse nome
+    por ano (é renovável). Exemplo: escritorio silva.com.br
+
+  DNS — A “lista telefônica” da internet: associa o nome ao número (IP) do
+    servidor. Errado aqui = site não abre ou abre outro lugar.
+
+  IP (IPv4) — Número do seu servidor, tipo 185.xxx ou 45.xxx. O painel do VPS
+    mostra esse número — é ele que você coloca no registro DNS tipo “A”.
+
+  VPS — Um computador Linux na nuvem só seu; você paga por mês para usá-lo.
+
+  SSH — Modo de entrar nesse computador pelo terminal e rodar comandos de texto.
+    No Windows usa-se em geral o PowerShell com o comando ssh.
+
+  HTTPS / cadeado — Conexão criptografada. Sem isso, senhas podem vazar.
+
+  Proxy (Nginx/Caddy) — Programa na frente da sua API que recebe o público na
+    porta 443 e repassa para a aplicação na porta interna (ex.: 8000).
+
+--- ORDEM SUGERIDA NA PRIMEIRA VEZ (roteiro de vida real) -----------------------
+
+  Você pode trocar um pouco a ordem, mas esta sequência evita dor de cabeça:
+
+  1) No seu PC: instalar Python e rodar o projeto em localhost (Parte 2).
+  2) Criar conta na OpenAI (e Anthropic se quiser) e gerar chaves de API — sem
+     isso não há análise com IA.
+  3) Comprar o domínio .br no Registro.br (seção A abaixo).
+  4) Alugar um VPS e ANOTAR o IP público (seção B).
+  5) No DNS, criar registro A apontando para esse IP (no Registro.br ou na
+     Cloudflare — seções A e C).
+  6) No servidor: instalar Docker, subir o projeto, depois Nginx/Caddy e HTTPS
+     (Parte 3 deste tutorial).
+
+  Domínio antes do VPS: pode. Você só não consegue “apontar” o nome até ter o IP.
+
+================================================================================
+A) REGISTRO.BR — COMPRAR DOMÍNIO .COM.BR (DO ZERO, SEM PRESSIONAR ATALHOS)
+================================================================================
+
+Site oficial: https://registro.br/
+
+O que você está fazendo: registrar um nome .com.br pelo qual só você (titular)
+pode usar aquele endereço, pagando renovação periódica.
+
+Passo 1 — Abrir o site
+  • Digite na barra de endereços: registro.br e pressione Enter.
+
+Passo 2 — Criar sua conta (se ainda não tiver)
+  • Procure botão ou link “Cadastro”, “Crie sua conta”, “Registrar-se”.
+  • Preencha nome, email, documento (CPF/CNPJ conforme pedido).
+  • Confirme o email: abra sua caixa de entrada e clique no link que enviarem.
+
+Passo 3 — Entrar (login)
+  • Use usuário e senha que você criou.
+  • Se o site pedir certificado digital em alguns fluxos, siga a opção que
+    corresponde ao seu caso (o próprio Registro.br orienta).
+
+Passo 4 — Ver se o nome que você quer está livre
+  • Na página principal há busca de domínio / consulta WHOIS.
+  • Digite o nome COMPLETO, por exemplo: minhaempresa.com.br
+  • Se estiver “disponível”, você pode registrar.
+  • Se estiver “registrado”, outra pessoa já tem — experimente outro nome.
+
+Passo 5 — Comprar (registrar)
+  • Siga o fluxo “Registrar”, coloque no carrinho, escolha quantidade de anos.
+  • Informe titular e contatos conforme formulário.
+  • Pague: PIX, boleto ou cartão — depende do que o site oferecer no momento.
+  • Guarde o comprovante e o email de confirmação.
+
+Passo 6 — Onde ver meu domínio depois?
+  • Faça login → área logada → “Meus domínios” / lista de domínios.
+  • Seu domínio deve aparecer como ativo.
+
+Passo 7 — DNS: ligar o nome ao seu servidor (só depois que tiver o IP do VPS)
+  • Clique no domínio → procure “DNS”, “Zona DNS”, “Editar zona”, “Gerenciar DNS”.
+  • Você verá uma TABELA. Os nomes das colunas variam, mas em geral há:
+      Tipo | Nome / Host | Destino / Valor / Aponta para | TTL
+
+  Para o LegalShield costuma-se usar um subdomínio, por exemplo app:
+
+    • Clique em “Adicionar registro”, “Nova entrada” ou equivalente.
+    • Tipo: A
+    • Nome / Host: app   (isso significa app.minhaempresa.com.br — o sistema pode
+      completar o resto do nome sozinho)
+    • Destino / IPv4: cole o IP público do VPS (só números e pontos).
+    • Salve / Aplicar.
+
+  Para apontar a raiz do domínio (minhaempresa.com.br sem “app”):
+    • Tipo A, Nome @ ou vazio ou “.” conforme a ajuda na tela do Registro.br.
+
+Passo 8 — Esperar a propagação
+  • DNS não atualiza no mundo inteiro na hora: pode levar de minutos a horas.
+  • No seu PC (PowerShell):  nslookup app.minhaempresa.com.br
+    Quando mostrar o IP do seu VPS, o DNS já “pegou” para você.
+
+Passo 9 — Delegar para Cloudflare (OPCIONAL; faça quando for usar a Cloudflare)
+  • Se você editar registros A direto no Registro.br, não precisa disso no início.
+  • Se quiser que a Cloudflare gerencie o DNS: primeiro adicione o domínio na
+    Cloudflare (seção C), copie os dois nameservers (xxx.ns.cloudflare.com).
+  • No Registro.br: área do domínio → Servidores DNS / Delegação → substitua os
+    servidores pelos da Cloudflare → salve.
+  • Aguarde até a Cloudflare mostrar o site como ativo. Depois disso os
+    registros A você cria NO PAINEL DA CLOUDFLARE, não mais na tabela antiga
+    do Registro.br (que fica “delegada”).
+
+Ajuda oficial do .br (documentação): https://registro.br/ajuda/
+
+
+================================================================================
+B) ALUGAR UM VPS — O QUE SIGNIFICA CADA CLIQUE (DIGITALOCEAN / HETZNER / LINODE)
+================================================================================
+
+Você só precisa de UM provedor. Links comuns:
+  https://www.digitalocean.com/
+  https://www.hetzner.com/cloud
+  https://www.linode.com/
+  https://www.oracle.com/cloud/free/
+
+O que você está fazendo: alugar uma máquina virtual Linux que fica ligada 24h.
+
+Passo 1 — Criar conta
+  • Abra o site do provedor → Sign up / Register.
+  • Email, senha, confirmação no email.
+  • Cadastre método de pagamento (cartão é o mais comum).
+
+Passo 2 — Criar a máquina (exemplos de nomes de botão)
+  • “Create”, “Create Droplet”, “Create Linode”, “Add Server”…
+  • Sistema operacional: escolha **Ubuntu 22.04 LTS** (é o mais usado em tutoriais).
+  • Região: escolha a mais próxima dos seus usuários (Brasil se existir; senão
+    EUA ou Europa — menor latência costuma ser melhor).
+  • Plano: comece pequeno (1 ou 2 vCPU, 2 a 4 GB RAM).
+
+Passo 3 — Chave SSH (para entrar sem senha de root por teclado)
+  • O painel pede uma “SSH key”. É um texto que identifica seu PC.
+
+  No Windows (PowerShell):
+    ssh-keygen -t ed25519 -C "seu-email@exemplo.com"
+    (pressione Enter para aceitar o caminho padrão; pode definir senha ou deixar vazio)
+    type $env:USERPROFILE\.ssh\id_ed25519.pub
+
+  Copie TUDO que aparecer (começa com ssh-ed25519) e cole no campo “SSH key”
+  do provedor. Dê um nome à chave (ex.: “notebook-casa”).
+
+  Se o provedor gerar senha root por email, guarde em lugar seguro — mas prefira
+  usar chave SSH.
+
+Passo 4 — Finalizar criação
+  • Revise: Ubuntu, região, tamanho, chave SSH.
+  • Clique em Create / Deploy. Espere 1–2 minutos.
+
+Passo 5 — Anotar o IP
+  • No painel aparece o **IPv4 público** — algo como 167.xxx.xxx.xxx.
+  • Esse é o número que você usa no DNS (registro A) e para conectar:
+
+      ssh ubuntu@SEU_IP
+      ou  ssh root@SEU_IP
+
+    (o usuário padrão pode ser ubuntu, root ou debian — o provedor avisa na tela)
+
+Passo 6 — Primeira conexão
+  • Abra PowerShell no Windows.
+  • Digite: ssh usuario@IP
+  • Na primeira vez pergunta se confia no fingerprint — digite: yes
+  • Se pedir senha e você usou só chave, verifique se colou a chave pública certa.
+
+Passo 7 — Senha de root (se vier por email)
+  • Alguns provedores enviam senha inicial por email. Troque depois ou use só
+    usuário com sudo (mais seguro). Veja Parte 3 deste tutorial para criar usuário
+    não-root.
+
+
+================================================================================
+C) CLOUDFLARE — PASSO A PASSO PARA QUEM NUNCA ABRIU O PAINEL
+================================================================================
+
+Site: https://www.cloudflare.com/     Painel após login: https://dash.cloudflare.com/
+
+O que você está fazendo: usar os servidores DNS da Cloudflare (e opcionalmente
+proteção gratuita na frente do seu site).
+
+Passo 1 — Criar conta
+  • Sign up → email e senha → confirme o email se pedirem.
+
+Passo 2 — Adicionar seu domínio
+  • Botão “Add a Site” / “Adicionar site”.
+  • Digite só o domínio: minhaempresa.com.br (sem http, sem www).
+  • Escolha o plano **Free** para começar.
+
+Passo 3 — Copiar os nameservers
+  • A Cloudflare mostra DOIS endereços terminando em .ns.cloudflare.com
+  • Copie os dois.
+
+Passo 4 — Colar no Registro.br (delegação)
+  • Abra https://registro.br/ → login → seu domínio.
+  • Área “Servidores DNS”, “DNS” ou “Delegação” → alterar para **servidores
+    externos** / DNS do provedor.
+  • Cole exatamente os dois nomes que a Cloudflare deu. Salve.
+
+Passo 5 — Esperar ficar verde
+  • Volte ao painel Cloudflare. Status pode ficar “Pending” um tempo.
+  • Quando ficar **Active**, o DNS passou a ser da Cloudflare.
+
+Passo 6 — Criar o registro que aponta para seu VPS
+  • Menu **DNS** → **Records** → **Add record**.
+  • Type: **A**
+  • Name: **app** (ou @ para raiz)
+  • IPv4 address: IP do VPS
+  • Proxy status: nuvem **laranja** ligada (recomendado) — protege um pouco mais.
+  • Save.
+
+Passo 7 — HTTPS entre visitante e Cloudflare vs seu servidor
+  • Menu **SSL/TLS** → **Overview**.
+  • Depois que no servidor Nginx/Caddy já tiver HTTPS válido (Let’s Encrypt),
+    use **Full (strict)**.
+  • Antes disso, pode usar **Full** temporariamente para testes — veja Parte 5.
+
+Documentação DNS Cloudflare: https://developers.cloudflare.com/dns/
+
+
+================================================================================
+D) PYTHON NO SEU COMPUTADOR (WINDOWS) — INSTALAÇÃO SEM MEDO
+================================================================================
+
+Site: https://www.python.org/downloads/
+
+Passo 1 — Baixar o instalador para Windows.
+Passo 2 — Execute o arquivo .exe.
+Passo 3 — NA PRIMEIRA TELA marque a caixa **Add Python to PATH** (fundamental).
+Passo 4 — Clique Install Now.
+Passo 5 — Feche e abra de novo o PowerShell. Digite:
+
+    python --version
+
+  Deve aparecer 3.10 ou superior.
+
+
+================================================================================
+E) OPENAI — CONTA, CARTÃO E CHAVE DE API (PARA O .ENV)
+================================================================================
+
+Site principal: https://platform.openai.com/
+
+Passo 1 — Sign up / Login (Google ou email).
+Passo 2 — Confirme email se pedirem.
+Passo 3 — Menu de billing / pagamento: cadastre método de pagamento (a API é
+  paga por uso — confira preços em https://openai.com/api/pricing/).
+Passo 4 — Vá em **API keys**: https://platform.openai.com/api-keys
+Passo 5 — Create new secret key → dê um nome → **copie a chave na hora**
+  (ela não aparece inteira de novo). Cole em OPENAI_API_KEY no arquivo .env
+Passo 6 — Em **Settings → Billing / Limits**, configure **limite mensal de gasto**
+  e alertas por email para não tomar surpresa na fatura.
+
+
+================================================================================
+F) ANTHROPIC (CLAUDE) — CONTA E CHAVE (OPCIONAL MAS ÚTIL COMO FALLBACK)
+================================================================================
+
+Console: https://console.anthropic.com/
+
+Passo 1 — Cadastro com email.
+Passo 2 — Configure billing conforme o console pedir.
+Passo 3 — Gere uma API key e copie para ANTHROPIC_API_KEY no .env.
+Passo 4 — Veja no painel se há limites ou alertas de uso e ative-os.
+
+
+================================================================================
+G) DOCKER NO SERVIDOR UBUNTU — COMO USAR O SITE OFICIAL SEM SE PERDER
+================================================================================
+
+Link oficial (Ubuntu): https://docs.docker.com/engine/install/ubuntu/
+
+Passo 1 — Abra essa página no navegador **do seu PC** (só para ler).
+Passo 2 — No servidor (já conectado por SSH), siga os blocos de comando NA ORDEM:
+  • Instalar pré-requisitos (ca-certificates, curl…)
+  • Adicionar repositório Docker
+  • apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+Passo 3 — Rode: sudo docker run hello-world
+  • Se aparecer mensagem de sucesso, o Docker funciona.
+Passo 4 — (Opcional) Para não precisar de sudo em todo comando:
+
+    sudo usermod -aG docker $USER
+
+  Desconecte do SSH e conecte de novo para valer.
+
+
+================================================================================
+H) CERTBOT + NGINX — GERADOR PASSO A PASSO NO SITE
+================================================================================
+
+Abra: https://certbot.eff.org/
+
+Passo 1 — Em **Software** escolha **Nginx**.
+Passo 2 — Em **System** escolha sua versão do Ubuntu (ex.: Ubuntu 22).
+Passo 3 — O site mostra os comandos exatos (sudo apt install …). Copie e cole
+  um bloco de cada vez no SSH do servidor.
+Passo 4 — Depois que Nginx estiver com server_name correto e DNS apontando para
+  o servidor, rode algo como:
+
+    sudo certbot --nginx -d app.seudominio.com.br
+
+Passo 5 — Teste no navegador: https://app.seudominio.com.br
+
+
+================================================================================
+I) GITHUB — GUARDAR CÓDIGO NA NUVEM (OPCIONAL)
+================================================================================
+
+Site: https://github.com/
+
+Passo 1 — Sign up → confirme email.
+Passo 2 — New repository → nome do projeto → Create (pode ser privado).
+Passo 3 — No seu PC, na pasta do projeto (com Git instalado):
+
+    git init
+    git add .
+    git commit -m "Primeiro commit"
+    git branch -M main
+    git remote add origin https://github.com/SEU_USUARIO/SEU_REPO.git
+    git push -u origin main
+
+(Nunca faça commit do arquivo .env — use .gitignore.)
+
+Passo 4 — No servidor, para baixar o código:
+
+    git clone https://github.com/SEU_USUARIO/SEU_REPO.git
+
+
+================================================================================
+QUANDO DER ERRADO (CHECKLIST MENTAL PARA INICIANTES)
+================================================================================
+
+  • Site não abre — DNS ainda não propagou? IP errado no registro A?
+  • “Connection refused” — API não está rodando (docker compose up?) ou firewall.
+  • Certificado não sai — domínio não aponta para ESTE servidor ou porta 80 fechada.
+  • Página 502 — Nginx aponta para porta errada; API caiu.
+  • Erro de CORS — URL no .env (CORS_ORIGINS) não bate com o que está no navegador.
+
+
+================================================================================
+GUIA DOS SITES (VERSÃO CURTA) — MESMO CONTEÚDO, MENOS PASSOS NA TELA
+================================================================================
+
+Use esta seção como roteiro rápido depois que já entendeu o guia longo acima.
+Os links são oficiais (Maio 2026); se algum mudar, busque pelo nome do produto.
+
+--- 1) Python (seu PC — desenvolvimento) -------------------------------------
+
+  Site: https://www.python.org/downloads/
+  O que fazer:
+    • Baixe o instalador para Windows/macOS ou use o gerenciador da sua distro Linux.
+    • No Windows, marque “Add Python to PATH” antes de concluir.
+    • Abra o terminal e confira: python --version  (deve ser 3.10 ou superior)
+
+--- 2) Git (opcional — clonar o repositório) ----------------------------------
+
+  Site: https://git-scm.com/downloads
+  Hospedar código (exemplos): https://github.com/  https://gitlab.com/
+  O que fazer:
+    • Instale; reinicie o terminal se necessário.
+    • git --version para testar.
+    • Crie um repositório vazio no GitHub/GitLab e envie seu código (git init,
+      git remote add, git push) ou clone um existente: git clone <url-https-ssh>
+
+--- 3) Registro.br — domínio .com.br ------------------------------------------
+
+  Site: https://registro.br/
+  O que fazer:
+    • Crie conta / faça login (CPF/CNPJ conforme regras do .br).
+    • Pesquise disponibilidade do domínio e registre (pagamento anual).
+    • Após registrar, use o painel “DNS” para apontar o domínio ao seu servidor,
+      OU delegue para a Cloudflare (próximo item) alterando os nameservers.
+    • Detalhe passo a passo: seção A do “GUIA PARA INICIANTES ABSOLUTOS” acima.
+
+--- 4) Cloudflare — DNS na nuvem + proteção gratuita --------------------------
+
+  Site principal: https://www.cloudflare.com/
+  Painel (login): https://dash.cloudflare.com/
+
+  O que fazer (fluxo típico):
+    1. Crie conta gratuita e clique em “Add a Site”.
+    2. Digite seu domínio (ex.: suaempresa.com.br).
+    3. A Cloudflare mostrará dois ou mais nameservers (ex.: xxx.ns.cloudflare.com).
+    4. No Registro.br, editar zona → alterar DNS para “delegação para outros
+       provedores” / nameservers externos → cole os nameservers da Cloudflare.
+       (O texto exato no Registro.br pode mudar; procure por “Servidores DNS”
+       ou “Delegação”.)
+    5. Volte ao Cloudflare e aguarde verificação (pode levar de minutos a horas).
+    6. Em DNS → Records, crie registro tipo A:
+         Nome: app (ou @ para raiz)
+         Conteúdo: IP público do seu VPS
+         Proxy: ligado (nuvem laranja) para proteção, ou desligado só para testes.
+    7. SSL/TLS → modo “Full (strict)” depois que HTTPS estiver ok no servidor.
+
+  Ajuda Cloudflare (DNS): https://developers.cloudflare.com/dns/
+  Passo a passo detalhado: seção C do “GUIA PARA INICIANTES ABSOLUTOS” acima.
+
+--- 5) Provedor de VPS — servidor Linux ---------------------------------------
+
+  Exemplos (escolha um):
+    https://www.hetzner.com/cloud
+    https://www.digitalocean.com/
+    https://www.linode.com/
+    https://www.oracle.com/cloud/free/
+
+  O que fazer (ideia geral — nomes dos botões variam):
+    1. Cadastre-se e confirme email / pagamento.
+    2. “Create” nova máquina: SO Ubuntu 22.04 LTS, região próxima ao Brasil se
+       existir (ou Europa para menor latência daqui).
+    3. Tamanho: 1–2 vCPU, 2–4 GB RAM para começar.
+    4. Adicione sua chave SSH pública (no Linux/Mac: conteúdo de ~/.ssh/id_rsa.pub;
+       no Windows pode gerar com ssh-keygen ou pelo painel do provedor).
+    5. Anote o IP público IPv4.
+    6. Conecte: ssh usuario@IP
+
+  Detalhe para iniciantes: seção B do “GUIA PARA INICIANTES ABSOLUTOS” acima.
+
+--- 6) Docker — containers no servidor ----------------------------------------
+
+  Instalação Ubuntu (oficial): https://docs.docker.com/engine/install/ubuntu/
+  Visão geral: https://docs.docker.com/get-docker/
+
+  O que fazer:
+    • Siga a página do Ubuntu passo a passo (repositório apt, instalar pacotes).
+    • Depois: sudo usermod -aG docker $USER e faça logout/login para usar docker
+      sem sudo (opcional mas conveniente).
+    • Teste: docker run hello-world
+
+  Detalhe: seção G acima.
+
+--- 7) Nginx — proxy reverso e HTTPS com Certbot ------------------------------
+
+  Documentação Nginx: https://nginx.org/en/docs/
+  Certbot (escolha Nginx + Ubuntu): https://certbot.eff.org/
+
+  O que fazer:
+    • Instale nginx e certbot conforme o Certbot para sua OS.
+    • Configure um server_name com seu domínio e proxy_pass para 127.0.0.1:8000.
+    • Rode certbot --nginx -d app.seudominio.com.br para obter certificado Let’s Encrypt.
+
+  Detalhe: seção H acima.
+
+--- 8) Caddy — alternativa ao Nginx com HTTPS automático -----------------------
+
+  Site: https://caddyserver.com/docs/
+  Instalar: https://caddyserver.com/docs/install
+
+  O que fazer:
+    • Instale pelo método oficial da sua distro.
+    • Edite Caddyfile com reverse_proxy para localhost:8000 e recarregue o serviço.
+
+--- 9) OpenAI — chave de API e limite de gasto ---------------------------------
+
+  Login / API: https://platform.openai.com/
+  API keys: https://platform.openai.com/api-keys
+  Cobrança e limites: https://platform.openai.com/settings/organization/billing
+  Preços (referência): https://openai.com/api/pricing/
+
+  O que fazer:
+    • Crie conta / organização e método de pagamento.
+    • Em API keys → Create new secret key → copie para OPENAI_API_KEY no .env
+      (nunca commite no Git).
+    • Em Billing → configure limite mensal de gasto e alertas por email.
+
+  Detalhe: seção E acima.
+
+--- 10) Anthropic (Claude) — chave de API -------------------------------------
+
+  Console: https://console.anthropic.com/
+  Documentação: https://docs.anthropic.com/
+
+  O que fazer:
+    • Cadastro e billing no console.
+    • Gere API key e coloque em ANTHROPIC_API_KEY no .env.
+    • Configure limites/alertas conforme as opções do painel.
+
+  Detalhe: seção F acima.
+
+--- 11) Documentação do próprio LegalShield (código) -------------------------
+
+  FastAPI: https://fastapi.tiangolo.com/
+  Uvicorn: https://www.uvicorn.org/
+  Docker Compose (referência): https://docs.docker.com/compose/
+
+  Use junto com as Partes 2 e 3 deste arquivo para subir run_server.py localmente
+  ou docker compose no servidor.
+
+
+================================================================================
+ÍNDICE RÁPIDO DE LINKS (SÓ URLS)
+================================================================================
+
+  Python:           https://www.python.org/downloads/
+  Git:              https://git-scm.com/downloads
+  GitHub:           https://github.com/
+  GitLab:           https://gitlab.com/
+  Registro.br:      https://registro.br/
+  Cloudflare:       https://www.cloudflare.com/     Painel: https://dash.cloudflare.com/
+  Hetzner Cloud:    https://www.hetzner.com/cloud
+  DigitalOcean:     https://www.digitalocean.com/
+  Linode:           https://www.linode.com/
+  Oracle Cloud Free: https://www.oracle.com/cloud/free/
+  Docker (Ubuntu):  https://docs.docker.com/engine/install/ubuntu/
+  Certbot:          https://certbot.eff.org/
+  Nginx docs:       https://nginx.org/en/docs/
+  Caddy:            https://caddyserver.com/docs/
+  WinSCP:           https://winscp.net/
+  OpenAI Platform:  https://platform.openai.com/
+  OpenAI pricing:   https://openai.com/api/pricing/
+  Anthropic:        https://console.anthropic.com/
+  FastAPI:          https://fastapi.tiangolo.com/
+
+
+================================================================================
+FIM DO TUTORIAL
+================================================================================

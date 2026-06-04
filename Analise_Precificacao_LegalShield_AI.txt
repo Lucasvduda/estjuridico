@@ -1,0 +1,216 @@
+================================================================================
+        ANÁLISE DE PRECIFICAÇÃO — LEGALSHIELD AI
+        Maximiuin IA · Maio 2026
+================================================================================
+
+
+1. INVENTÁRIO TÉCNICO COMPARATIVO
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  PROJETO A — SaaS (Assinatura Mensal)                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Backend:         FastAPI + SQLAlchemy async + PostgreSQL/SQLite            │
+│  Frontend:        SPA vanilla JS (20 arquivos) + CSS modular (4 arquivos)  │
+│  Código custom:   ~7.175 linhas (3.746 Python + 3.429 frontend)            │
+│  Arquivos custom: 49 (29 .py + 20 frontend)                               │
+│  Endpoints REST:  27 rotas                                                 │
+│  Integração IA:   OpenAI + Anthropic via LiteLLM (fallback automático)     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  Funcionalidades exclusivas do SaaS:
+  • Multi-tenancy completo (isolamento por tenant_id em todas as queries)
+  • White-label (cores/tema por tenant)
+  • Painel admin da plataforma (analytics, gestão de tenants, modelos IA,
+    auditoria, temas)
+  • MFA (TOTP com QR Code + códigos de recuperação)
+  • Rate limiting por tenant (limite mensal de análises)
+  • Criptografia AES de arquivos em repouso
+  • Audit logging completo
+  • JWT com refresh tokens
+  • Bcrypt para senhas
+  • Prompt injection guard (regex PT/EN + sanitização)
+  • 4 modos de análise jurídica (defensivo, ofensivo, auditoria, shield)
+  • Upload e processamento de contratos (PDF, DOCX, TXT com OCR)
+  • Gestão de planos/assinatura (estrutura pronta)
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  PROJETO B — Enterprise (Venda Única)                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Backend:         FastAPI + SQLite puro                                     │
+│  Frontend:        SPA single-file JS + CSS único                           │
+│  Código custom:   ~4.170 linhas (3.678 Python + ~393 frontend)             │
+│  Arquivos custom: ~25 (21 .py + 4 frontend)                               │
+│  Endpoints REST:  13 rotas + 1 catch-all                                   │
+│  Integração IA:   OpenAI + Anthropic via LiteLLM                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  Funcionalidades exclusivas do Enterprise:
+  • Sistema de licenciamento RSA (binding por hardware ID + expiração)
+  • Esteganografia / watermark forense (5 técnicas de fingerprint)
+  • Ferramentas de deploy (Docker + script deploy.py para Linux)
+  • BYOK (Bring Your Own Key) — cliente usa suas próprias chaves de IA
+  • Gerador de relatórios PDF (ReportLab com capa, resumo, achados)
+  • Auto-contido (single-tenant, sem dependência de infra externa)
+  • Dashboard com gráficos (Chart.js)
+
+
+2. ESTIMATIVA DE CUSTO DE DESENVOLVIMENTO (REFERÊNCIA)
+================================================================================
+
+  Desenvolvedor sênior Python/FastAPI: R$ 120–180/hora (Brasil, 2026)
+
+  ┌───────────────┬────────────────────┬──────────────────────────┐
+  │ Projeto       │ Horas estimadas    │ Custo para recriar       │
+  ├───────────────┼────────────────────┼──────────────────────────┤
+  │ SaaS          │ 800 – 1.200 horas  │ R$ 120.000 – R$ 216.000 │
+  │ Enterprise    │ 400 – 600 horas    │ R$  60.000 – R$ 108.000 │
+  └───────────────┴────────────────────┴──────────────────────────┘
+
+
+3. PROPOSTA DE PRECIFICAÇÃO
+================================================================================
+
+─── PROJETO A — SaaS (Assinatura Mensal) ───────────────────────────────────
+
+  Referência de mercado LegalTech BR (2025-2026):
+  • Themis (análise contratual): R$ 500–2.000/mês
+  • Turivius: R$ 300–1.500/mês
+  • Docket: R$ 200–900/mês
+  • Ferramentas de IA jurídica internacionais: US$ 200–2.000/mês
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  PLANO STARTER — Micro/Pequena Empresa (até 5 usuários)                │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Preço:   R$ 297/mês (anual) ou R$ 397/mês (mensal)                   │
+  │  Limite:  50 análises/mês                                              │
+  │  Armazenamento: 1 GB                                                   │
+  │  Modos:   Defensivo + Ofensivo                                         │
+  │  Suporte: E-mail                                                       │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  PLANO PROFESSIONAL — Média Empresa (até 20 usuários)                  │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Preço:   R$ 797/mês (anual) ou R$ 997/mês (mensal)                   │
+  │  Limite:  200 análises/mês                                             │
+  │  Armazenamento: 10 GB                                                  │
+  │  Modos:   Todos os 4 modos de análise                                 │
+  │  Extras:  Relatórios PDF, White-label básico (logo + cores)            │
+  │  Suporte: E-mail + Chat                                                │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  PLANO ENTERPRISE — Grande Empresa (usuários ilimitados)               │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Preço:   R$ 1.997/mês (anual) ou R$ 2.497/mês (mensal)               │
+  │  Limite:  Análises ilimitadas                                          │
+  │  Armazenamento: Ilimitado                                              │
+  │  Modos:   Todos os 4 + auditoria                                      │
+  │  Extras:  White-label completo, API access, MFA obrigatório            │
+  │  Suporte: Prioritário + Onboarding + SLA de uptime                    │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  PLANO ESCRITÓRIO DE ADVOCACIA (por advogado)                          │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Preço:   R$ 149/advogado/mês (mínimo 3)                              │
+  │  Ideal para escritórios que preferem pagar por cabeça                  │
+  │  Todas as funcionalidades do Professional                              │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  Projeção de receita (cenário conservador):
+  • 10 clientes Starter + 5 Professional + 2 Enterprise
+  • Receita mensal: R$ 14.964/mês
+  • Receita anual projetada: ~R$ 180.000
+  • Custo de infra (servidor + APIs LLM): ~R$ 3.000–5.000/mês
+  • Margem bruta estimada: 70–80%
+
+
+─── PROJETO B — Enterprise (Venda Única) ───────────────────────────────────
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  PEQUENA EMPRESA / ESCRITÓRIO PEQUENO (até 10 pessoas)                 │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Licença:       R$ 15.000 – R$ 25.000 (pagamento único)               │
+  │  Suporte:       6 meses inclusos                                       │
+  │  Atualizações:  12 meses inclusos                                      │
+  │  Renovação:     R$ 3.000/ano                                           │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  MÉDIA EMPRESA (10–100 pessoas)                                        │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Licença:       R$ 35.000 – R$ 55.000                                  │
+  │  Suporte:       12 meses inclusos                                      │
+  │  Atualizações:  12 meses inclusos                                      │
+  │  Extras:        Customização básica inclusa (logo, cores)              │
+  │  Renovação:     R$ 6.000/ano                                           │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  GRANDE EMPRESA (100+ pessoas)                                         │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Licença:       R$ 70.000 – R$ 120.000                                 │
+  │  Suporte:       12 meses inclusos + onboarding dedicado                │
+  │  Atualizações:  24 meses inclusos                                      │
+  │  Extras:        Customização completa + integração                     │
+  │  Renovação:     R$ 12.000/ano                                          │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  Serviços adicionais opcionais:
+  • Implantação e configuração:         R$  5.000 – R$ 15.000
+  • Treinamento da equipe (remoto):     R$  3.000
+  • Treinamento presencial:             R$  8.000
+  • Customização de prompts/modos:      R$  5.000 – R$ 20.000
+  • Integração com sistemas internos:   R$ 10.000 – R$ 40.000
+
+
+4. JUSTIFICATIVA DE VALOR
+================================================================================
+
+  1. ECONOMIA PARA O CLIENTE
+     Um advogado júnior custa R$ 4.000–8.000/mês. A ferramenta substitui
+     horas de revisão manual, pagando-se em 1–2 contratos analisados.
+
+  2. BARREIRA DE ENTRADA
+     Recriar do zero custaria R$ 60k–216k + 3–6 meses de desenvolvimento.
+     O cliente compra algo pronto e funcional.
+
+  3. TECNOLOGIA DE PONTA
+     4 modos de análise com IA (GPT-4, Claude), prompt injection guard,
+     criptografia, multi-tenancy — não é um wrapper simples de ChatGPT.
+
+  4. PROTEÇÃO ANTI-PIRATARIA (Enterprise)
+     Licenciamento RSA + hardware binding + watermark forense — valor
+     agregado significativo contra cópia e distribuição não autorizada.
+
+  5. MERCADO EM CRESCIMENTO
+     LegalTech no Brasil cresce 25–30% ao ano. Demanda real e crescente
+     por automação jurídica com inteligência artificial.
+
+
+5. RECOMENDAÇÕES ESTRATÉGICAS
+================================================================================
+
+  SaaS:
+  • Oferecer trial de 14 dias grátis (sem cartão)
+  • Converter com desconto no plano anual (25% off)
+
+  Enterprise:
+  • Oferecer demo/POC gratuito com contrato de exemplo
+  • Fechar com proposta comercial personalizada por cliente
+
+  Ambos:
+  • Corrigir lacunas de segurança identificadas antes de comercializar
+    (CORS, auth nas rotas, armazenamento de chaves)
+
+  Upsell:
+  • No SaaS, o plano Enterprise pode funcionar como "ponte" para clientes
+    que preferem ter o sistema on-premise após usar o SaaS
+
+
+================================================================================
+  Documento gerado em: 09/05/2026
+  Maximiuin IA — Análise interna de precificação
+================================================================================

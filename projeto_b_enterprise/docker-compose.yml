@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    container_name: legalshield-enterprise
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}        # BYOK: Cliente insere sua chave
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}  # BYOK: Opcional
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./reports:/app/reports
+      - ./license.key:/app/license.key:ro
+      - ./public_key.pem:/app/public_key.pem:ro
+    restart: unless-stopped

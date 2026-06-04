@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LegalShield AI — Enterprise — Análise Jurídica com IA">
+    <title>LegalShield AI — Enterprise</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+    <div id="loading" class="loading"><div class="loading-content"><div class="loading-icon"><i data-lucide="shield-check"></i></div><h1>LegalShield AI</h1><p>Enterprise Edition</p><div class="loading-bar"><div class="loading-bar-fill"></div></div></div></div>
+    <div id="app" style="display:none;">
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header"><div class="sidebar-logo"><i data-lucide="shield-check"></i><span>LegalShield</span></div></div>
+            <nav id="nav" class="sidebar-nav"></nav>
+            <div class="sidebar-footer"><button class="nav-item" onclick="EApp.logout()"><i data-lucide="log-out"></i><span>Sair</span></button></div>
+        </aside>
+        <main class="main"><header class="header"><h1 id="page-title">Dashboard</h1></header><div id="page" class="page-content"></div></main>
+    </div>
+    <div id="auth" style="display:none;" class="auth-screen">
+        <div class="auth-container"><div class="auth-brand"><div class="auth-logo"><i data-lucide="shield-check"></i></div><h1>LegalShield AI</h1><p>Enterprise Edition</p></div>
+            <div class="auth-form"><h2>Login</h2>
+                <form id="login-form">
+                    <div class="fg"><label>Usuário</label><input type="text" id="inp-user" required autocomplete="username"></div>
+                    <div class="fg"><label>Senha</label><input type="password" id="inp-pass" required autocomplete="current-password"></div>
+                    <button type="submit" class="btn-primary" id="btn-login">Entrar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div id="toasts" class="toasts"></div>
+    <div id="modal-bg" class="modal-bg" style="display:none;"><div id="modal" class="modal-box"></div></div>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

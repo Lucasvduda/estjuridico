@@ -1,0 +1,40 @@
+{
+  // Cloudflare Worker — Edge Gateway para LegalShield AI
+  // Deploy: npx wrangler deploy
+  // Dev:    npx wrangler dev --remote
+
+  "name": "legalshield-edge-gateway",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-22",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // KV namespace para rate limiting por IP
+  // Criar com: npx wrangler kv namespace create RATE_LIMIT_KV
+  "kv_namespaces": [
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "SUBSTITUIR_PELO_ID_REAL",           // npx wrangler kv namespace create RATE_LIMIT_KV
+      "preview_id": "SUBSTITUIR_PELO_PREVIEW_ID"  // npx wrangler kv namespace create RATE_LIMIT_KV --preview
+    }
+  ],
+
+  // Observabilidade: 10% de amostragem de logs (ajustar em produção)
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+
+  // Variáveis não-sensíveis (não usar para segredos)
+  "vars": {
+    // Janela de rate limit em milissegundos
+    "RATE_LIMIT_WINDOW_MS": "1000",
+    // Máximo de requisições por IP dentro da janela
+    "RATE_LIMIT_MAX_REQUESTS": "10",
+    // TTL do cache de polling de análise em segundos
+    "ANALYSIS_CACHE_TTL_SECONDS": "2"
+  }
+
+  // Segredo via CLI (nunca no wrangler.jsonc):
+  //   npx wrangler secret put RENDER_BACKEND_URL
+  //   Valor: https://legalshield-api.onrender.com
+}
