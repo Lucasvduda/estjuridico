@@ -53,6 +53,52 @@ def setup_logging():
 # App Lifespan
 # ---------------------------------------------------------------------------
 
+async def _ensure_admin_exists(log) -> None:
+    """Cria tenant + superadmin se o banco estiver vazio.
+
+    Usa ADMIN_EMAIL e ADMIN_INITIAL_PASSWORD das variáveis de ambiente.
+    Idempotente — se o admin já existe, não faz nada.
+    """
+    from sqlalchemy import select, func
+    from .database import async_session_factory
+    from .models import Tenant, User
+    from .core.security import hash_password
+
+    try:
+        async with async_session_factory() as db:
+            count = await db.execute(select(func.count()).select_from(User))
+            if (count.scalar() or 0) > 0:
+                return
+
+            admin_email = settings.admin_email
+            admin_password = settings.admin_initial_password
+
+            if not admin_email or admin_email == "admin@legalshield.ai":
+                await log.awarn("ADMIN_EMAIL não configurado — pulando criação do admin")
+                return
+
+            tenant = Tenant(
+                name="Administração",
+                slug="admin",
+                email=admin_email,
+            )
+            db.add(tenant)
+            await db.flush()
+
+            user = User(
+                tenant_id=tenant.id,
+                email=admin_email,
+                password_hash=hash_password(admin_password),
+                full_name="Administrador",
+                role="superadmin",
+            )
+            db.add(user)
+            await db.commit()
+            await log.ainfo("Admin criado automaticamente", email=admin_email, role="superadmin")
+    except Exception as e:
+        await log.aerror("Falha ao criar admin automático", error=str(e))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gerencia startup e shutdown do app."""
@@ -68,6 +114,9 @@ async def lifespan(app: FastAPI):
     # Cria tabelas se não existirem (seguro em produção — CREATE IF NOT EXISTS)
     await init_db()
     await log.ainfo("Banco de dados inicializado")
+
+    # Criar conta admin automática se não existir
+    await _ensure_admin_exists(log)
 
     yield
 
