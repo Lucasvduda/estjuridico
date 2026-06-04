@@ -22,23 +22,22 @@ settings = get_settings()
 
 
 # ---------------------------------------------------------------------------
-# Detectar backend
+# Detectar backend e montar URL async correta
 # ---------------------------------------------------------------------------
-_is_sqlite = settings.database_url.startswith("sqlite")
+_db_url = settings.async_database_url
+_is_sqlite = _db_url.startswith("sqlite")
 
 
 # ---------------------------------------------------------------------------
 # Engine Configuration
 # ---------------------------------------------------------------------------
 if _is_sqlite:
-    # SQLite: sem pool_size/max_overflow, habilitar check_same_thread=False
     engine = create_async_engine(
-        settings.database_url,
+        _db_url,
         echo=settings.debug,
         connect_args={"check_same_thread": False},
     )
 
-    # Habilitar WAL mode e foreign keys no SQLite
     @event.listens_for(engine.sync_engine, "connect")
     def _set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
@@ -46,9 +45,8 @@ if _is_sqlite:
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
 else:
-    # PostgreSQL: pool de conexões completo
     engine = create_async_engine(
-        settings.database_url,
+        _db_url,
         pool_size=settings.db_pool_size,
         max_overflow=settings.db_max_overflow,
         echo=settings.debug,

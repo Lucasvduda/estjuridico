@@ -30,6 +30,23 @@ class Settings(BaseSettings):
     db_pool_size: int = 10
     db_max_overflow: int = 5
 
+    @property
+    def async_database_url(self) -> str:
+        """Converte DATABASE_URL para o driver asyncpg.
+
+        O Render fornece URLs no formato postgres:// ou postgresql://
+        mas o SQLAlchemy async precisa de postgresql+asyncpg://.
+        Em dev com SQLite, retorna como está.
+        """
+        url = self.database_url
+        if url.startswith("sqlite"):
+            return url
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+asyncpg://", 1)
+        if url.startswith("postgresql://"):
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
     # === Redis ===
     # Usado para: fila de jobs (Arq), cache temporário dos bytes do contrato
     # (vivem aqui durante a análise e somem por TTL), kill-switch e rate limit.
