@@ -70,8 +70,13 @@ async def _ensure_admin_exists(log) -> None:
             existing = await db.execute(
                 select(User).where(User.role == "superadmin")
             )
-            if existing.scalar_one_or_none():
-                await log.ainfo("Superadmin já existe — pulando")
+            superadmin = existing.scalar_one_or_none()
+            if superadmin:
+                # Garantir que email e senha estão corretos
+                superadmin.email = admin_email
+                superadmin.password_hash = hash_password(admin_password)
+                await db.commit()
+                await log.ainfo("Superadmin atualizado", email=admin_email)
                 return
 
             admin_email = settings.admin_email
