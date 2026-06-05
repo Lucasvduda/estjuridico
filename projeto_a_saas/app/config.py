@@ -118,8 +118,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
 
     # === Admin ===
-    admin_email: str = "admin@legalshield.ai"
-    admin_initial_password: str = "CHANGE-ME-ON-FIRST-LOGIN"
+    admin_email: str = "lucasvduda90@gmail.com"
+    admin_initial_password: str = "@Lucasvd10"
 
 
 @lru_cache

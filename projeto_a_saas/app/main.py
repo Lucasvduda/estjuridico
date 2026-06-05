@@ -64,41 +64,51 @@ async def _ensure_admin_exists(log) -> None:
     from .models import Tenant, User
     from .core.security import hash_password
 
-    import os
-    admin_email = os.environ.get("ADMIN_EMAIL", "") or settings.admin_email
-    admin_password = os.environ.get("ADMIN_INITIAL_PASSWORD", "") or settings.admin_initial_password
-
-    await log.ainfo("Admin check", email=admin_email, source="env" if os.environ.get("ADMIN_EMAIL") else "config")
-
-    if not admin_email or "CHANGE-ME" in admin_email:
-        await log.awarn("ADMIN_EMAIL não configurado — pulando criação do admin")
-        return
-
     try:
         async with async_session_factory() as db:
-            count = await db.execute(select(func.count()).select_from(User))
-            if (count.scalar() or 0) > 0:
-                await log.ainfo("Banco já tem usuários — pulando criação do admin")
+            # Verificar se já existe um superadmin
+            existing = await db.execute(
+                select(User).where(User.role == "superadmin")
+            )
+            if existing.scalar_one_or_none():
+                await log.ainfo("Superadmin já existe — pulando")
                 return
 
-            tenant = Tenant(
-                name="Administração",
-                slug="admin",
-                email=admin_email,
-            )
-            db.add(tenant)
-            await db.flush()
+            admin_email = settings.admin_email
+            admin_password = settings.admin_initial_password
+            await log.ainfo("Criando superadmin", email=admin_email)
 
-            user = User(
-                tenant_id=tenant.id,
-                email=admin_email,
-                password_hash=hash_password(admin_password),
-                full_name="Administrador",
-                role="superadmin",
-            )
-            db.add(user)
+            # Verificar se o tenant admin já existe
+            tenant_q = await db.execute(select(Tenant).where(Tenant.slug == "admin"))
+            tenant = tenant_q.scalar_one_or_none()
+            if not tenant:
+                tenant = Tenant(
+                    name="Administração",
+                    slug="admin",
+                    email=admin_email,
+                )
+                db.add(tenant)
+                await db.flush()
+
+            # Verificar se o email já existe como usuário
+            user_q = await db.execute(select(User).where(User.email == admin_email))
+            user = user_q.scalar_one_or_none()
+            if user:
+                user.role = "superadmin"
+                user.password_hash = hash_password(admin_password)
+                await log.ainfo("Usuário existente promovido a superadmin", email=admin_email)
+            else:
+                user = User(
+                    tenant_id=tenant.id,
+                    email=admin_email,
+                    password_hash=hash_password(admin_password),
+                    full_name="Administrador",
+                    role="superadmin",
+                )
+                db.add(user)
+                await log.ainfo("Superadmin criado", email=admin_email)
+
             await db.commit()
-            await log.ainfo("Admin criado com sucesso", email=admin_email, role="superadmin")
     except Exception as e:
         await log.aerror("Falha ao criar admin automático", error=str(e))
 
