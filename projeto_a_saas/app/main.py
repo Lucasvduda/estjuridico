@@ -64,17 +64,21 @@ async def _ensure_admin_exists(log) -> None:
     from .models import Tenant, User
     from .core.security import hash_password
 
+    import os
+    admin_email = os.environ.get("ADMIN_EMAIL", "") or settings.admin_email
+    admin_password = os.environ.get("ADMIN_INITIAL_PASSWORD", "") or settings.admin_initial_password
+
+    await log.ainfo("Admin check", email=admin_email, source="env" if os.environ.get("ADMIN_EMAIL") else "config")
+
+    if not admin_email or "CHANGE-ME" in admin_email:
+        await log.awarn("ADMIN_EMAIL não configurado — pulando criação do admin")
+        return
+
     try:
         async with async_session_factory() as db:
             count = await db.execute(select(func.count()).select_from(User))
             if (count.scalar() or 0) > 0:
-                return
-
-            admin_email = settings.admin_email
-            admin_password = settings.admin_initial_password
-
-            if not admin_email or admin_email == "admin@legalshield.ai":
-                await log.awarn("ADMIN_EMAIL não configurado — pulando criação do admin")
+                await log.ainfo("Banco já tem usuários — pulando criação do admin")
                 return
 
             tenant = Tenant(
@@ -94,7 +98,7 @@ async def _ensure_admin_exists(log) -> None:
             )
             db.add(user)
             await db.commit()
-            await log.ainfo("Admin criado automaticamente", email=admin_email, role="superadmin")
+            await log.ainfo("Admin criado com sucesso", email=admin_email, role="superadmin")
     except Exception as e:
         await log.aerror("Falha ao criar admin automático", error=str(e))
 
