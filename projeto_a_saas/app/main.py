@@ -64,6 +64,9 @@ async def _ensure_admin_exists(log) -> None:
     from .models import Tenant, User
     from .core.security import hash_password
 
+    admin_email = settings.admin_email
+    admin_password = settings.admin_initial_password
+
     try:
         async with async_session_factory() as db:
             # Verificar se já existe um superadmin
@@ -72,15 +75,12 @@ async def _ensure_admin_exists(log) -> None:
             )
             superadmin = existing.scalar_one_or_none()
             if superadmin:
-                # Garantir que email e senha estão corretos
                 superadmin.email = admin_email
                 superadmin.password_hash = hash_password(admin_password)
                 await db.commit()
                 await log.ainfo("Superadmin atualizado", email=admin_email)
                 return
 
-            admin_email = settings.admin_email
-            admin_password = settings.admin_initial_password
             await log.ainfo("Criando superadmin", email=admin_email)
 
             # Verificar se o tenant admin já existe
