@@ -72,7 +72,7 @@ services:
       - key: DEBUG
         value: "false"
       - key: STORAGE_BACKEND
-        value: r2
+        value: redis
 
       - key: DATABASE_URL
         fromDatabase:
@@ -88,7 +88,16 @@ services:
         value: "1800"
       - key: JWT_SECRET_KEY
         generateValue: true
-      - fromGroup: legalshield-secrets
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ENCRYPTION_MASTER_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_INITIAL_PASSWORD
+        sync: false
 
       - key: LLM_PRIMARY_MODEL
         value: openai/gpt-4o
@@ -130,7 +139,7 @@ services:
       - key: DEBUG
         value: "false"
       - key: STORAGE_BACKEND
-        value: r2
+        value: redis
 
       - key: DATABASE_URL
         fromDatabase:
@@ -144,7 +153,10 @@ services:
 
       - key: CONTRACT_CACHE_TTL_SECONDS
         value: "1800"
-      - fromGroup: legalshield-secrets
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ENCRYPTION_MASTER_KEY
+        sync: false
 
       - key: WORKER_CONCURRENCY
         value: "2"                # menos concorrência para plano starter

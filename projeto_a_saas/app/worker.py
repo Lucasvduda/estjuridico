@@ -52,11 +52,14 @@ _MODE_MAP = {
 
 async def run_analysis(ctx: dict, analysis_id: str) -> dict:
     """Job principal — executa a análise pesada e persiste o relatório."""
-    logger.info("worker: iniciando análise %s", analysis_id)
+    import os
+    openai_key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY", "")
+    anthropic_key = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+    logger.info("worker: iniciando análise %s | openai=%s", analysis_id, "OK" if openai_key else "VAZIO")
 
     llm_config = LLMConfig(
-        openai_api_key=settings.openai_api_key,
-        anthropic_api_key=settings.anthropic_api_key,
+        openai_api_key=openai_key,
+        anthropic_api_key=anthropic_key,
     )
     engine = AnalysisEngine(config=llm_config)
 
@@ -157,14 +160,19 @@ async def run_analysis(ctx: dict, analysis_id: str) -> dict:
 
 
 async def startup(ctx: dict) -> None:
+    from .services.redis_client import init_redis_pool
+    redis = await init_redis_pool()
     logger.info(
-        "worker: iniciado | concurrency=%s, max_jobs/min=%s",
+        "worker: iniciado | concurrency=%s, max_jobs/min=%s, redis=%s",
         settings.worker_concurrency,
         settings.worker_max_jobs_per_minute,
+        "OK" if redis else "FALHOU",
     )
 
 
 async def shutdown(ctx: dict) -> None:
+    from .services.redis_client import close_redis_pool
+    await close_redis_pool()
     logger.info("worker: encerrado")
 
 

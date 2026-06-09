@@ -117,7 +117,7 @@ class LLMConnector:
             try:
                 start_time = time.time()
 
-                response = await litellm.acompletion(
+                call_kwargs = dict(
                     model=current_model,
                     messages=[
                         {"role": "system", "content": system_prompt},
@@ -127,6 +127,12 @@ class LLMConnector:
                     temperature=self.config.temperature,
                     timeout=self.config.timeout,
                 )
+                if "openai" in current_model and self.config.openai_api_key:
+                    call_kwargs["api_key"] = self.config.openai_api_key
+                elif "anthropic" in current_model and self.config.anthropic_api_key:
+                    call_kwargs["api_key"] = self.config.anthropic_api_key
+
+                response = await litellm.acompletion(**call_kwargs)
 
                 latency = time.time() - start_time
 
