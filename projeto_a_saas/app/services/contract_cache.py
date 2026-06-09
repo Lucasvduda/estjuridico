@@ -234,6 +234,9 @@ async def store_contract_bytes(
 ) -> None:
     """Salva bytes do contrato no backend resolvido automaticamente.
 
+    Se o backend principal falhar (ex.: R2 com credenciais erradas),
+    faz fallback automático: r2 → redis → memory.
+
     Args:
         contract_id: UUID do contrato (string).
         data: Bytes brutos do PDF/DOCX/TXT (já extraídos, não criptografados).
@@ -242,40 +245,103 @@ async def store_contract_bytes(
     ttl = ttl_seconds or settings.contract_cache_ttl_seconds
     backend = get_active_backend()
 
+    # --- Tentativa com R2 ---
     if backend == "r2":
-        await _r2_store(contract_id, data, ttl)
-        return
+        try:
+            await _r2_store(contract_id, data, ttl)
+            return
+        except Exception as e:
+            logger.error(
+                "contract_cache[r2]: FALHA no upload R2 — %s: %s. Tentando fallback...",
+                type(e).__name__, e,
+            )
+            # Fallback para Redis
+            redis = get_redis_client()
+            if redis is not None:
+                try:
+                    await redis.set(_redis_bytes_key(contract_id), data, ex=ttl)
+                    logger.warning(
+                        "contract_cache: fallback R2→Redis OK. contract_id=%s (%d bytes, TTL=%ds)",
+                        contract_id, len(data), ttl,
+                    )
+                    return
+                except Exception as e2:
+                    logger.error("contract_cache: fallback Redis também falhou — %s", e2)
 
+            # Fallback final para memória
+            _inmemory_store[contract_id] = data
+            logger.warning(
+                "contract_cache: fallback R2→memory. contract_id=%s (%d bytes, SEM TTL)",
+                contract_id, len(data),
+            )
+            return
+
+    # --- Tentativa com Redis ---
     redis = get_redis_client()
     if backend == "redis" and redis is not None:
-        await redis.set(_redis_bytes_key(contract_id), data, ex=ttl)
-        logger.info(
-            "contract_cache[redis]: %d bytes guardados (TTL=%ds) contract_id=%s",
-            len(data),
-            ttl,
-            contract_id,
-        )
-        return
+        try:
+            await redis.set(_redis_bytes_key(contract_id), data, ex=ttl)
+            logger.info(
+                "contract_cache[redis]: %d bytes guardados (TTL=%ds) contract_id=%s",
+                len(data), ttl, contract_id,
+            )
+            return
+        except Exception as e:
+            logger.error(
+                "contract_cache[redis]: FALHA — %s: %s. Usando fallback memória.",
+                type(e).__name__, e,
+            )
+            _inmemory_store[contract_id] = data
+            return
 
-    # Fallback em memória (STORAGE_BACKEND=memory ou sem Redis)
+    # --- Fallback em memória (STORAGE_BACKEND=memory ou sem Redis) ---
     _inmemory_store[contract_id] = data
     logger.debug(
         "contract_cache[memory]: %d bytes guardados contract_id=%s",
-        len(data),
-        contract_id,
+        len(data), contract_id,
     )
 
 
 async def fetch_contract_bytes(contract_id: str) -> Optional[bytes]:
-    """Recupera bytes do contrato. Retorna None se expirou ou não existe."""
+    """Recupera bytes do contrato. Retorna None se expirou ou não existe.
+
+    Tenta todos os backends na cadeia de fallback, porque o store pode
+    ter feito fallback de R2 → Redis → memory.
+    """
     backend = get_active_backend()
 
     if backend == "r2":
-        return await _r2_fetch(contract_id)
+        try:
+            result = await _r2_fetch(contract_id)
+            if result is not None:
+                return result
+        except Exception as e:
+            logger.error("contract_cache[r2]: FALHA no fetch R2 — %s: %s", type(e).__name__, e)
+
+        # Fallback: talvez tenha sido salvo no Redis
+        redis = get_redis_client()
+        if redis is not None:
+            try:
+                result = await redis.get(_redis_bytes_key(contract_id))
+                if result is not None:
+                    logger.warning("contract_cache: fetch fallback R2→Redis OK. contract_id=%s", contract_id)
+                    return result
+            except Exception:
+                pass
+
+        # Fallback: talvez esteja em memória
+        result = _inmemory_store.get(contract_id)
+        if result is not None:
+            logger.warning("contract_cache: fetch fallback R2→memory OK. contract_id=%s", contract_id)
+        return result
 
     redis = get_redis_client()
     if backend == "redis" and redis is not None:
-        return await redis.get(_redis_bytes_key(contract_id))
+        try:
+            return await redis.get(_redis_bytes_key(contract_id))
+        except Exception as e:
+            logger.error("contract_cache[redis]: FALHA no fetch — %s", e)
+            return _inmemory_store.get(contract_id)
 
     return _inmemory_store.get(contract_id)
 

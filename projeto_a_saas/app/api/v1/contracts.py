@@ -118,10 +118,16 @@ async def upload_contract(
     try:
         await store_contract_bytes(str(contract_id), file_bytes)
     except Exception as e:
-        logger.error("Falha ao guardar bytes no cache (%s) — abortando upload", e)
+        logger.error(
+            "Falha ao guardar bytes no cache — abortando upload. "
+            "Tipo: %s | Erro: %s | Backend: %s",
+            type(e).__name__, e,
+            settings.storage_backend if hasattr(settings, 'storage_backend') else 'unknown',
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=503,
-            detail="Cache temporário indisponível. Tente novamente em instantes.",
+            detail=f"Cache temporário indisponível ({type(e).__name__}). Tente novamente em instantes.",
         )
 
     await log_audit(
