@@ -55,7 +55,8 @@ async def run_analysis(ctx: dict, analysis_id: str) -> dict:
     import os
     openai_key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY", "")
     anthropic_key = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-    logger.info("worker: iniciando análise %s | openai=%s", analysis_id, "OK" if openai_key else "VAZIO")
+    # print() garante saída no stdout do Render (logger.info é filtrado)
+    print(f"[WORKER] analysis={analysis_id[:8]} openai={'SET('+openai_key[:8]+')' if openai_key else 'EMPTY'} settings_key={'SET' if settings.openai_api_key else 'NONE'} env_key={'SET' if os.environ.get('OPENAI_API_KEY') else 'NONE'}", flush=True)
 
     llm_config = LLMConfig(
         openai_api_key=openai_key,
@@ -160,14 +161,11 @@ async def run_analysis(ctx: dict, analysis_id: str) -> dict:
 
 
 async def startup(ctx: dict) -> None:
+    import os
     from .services.redis_client import init_redis_pool
     redis = await init_redis_pool()
-    logger.info(
-        "worker: iniciado | concurrency=%s, max_jobs/min=%s, redis=%s",
-        settings.worker_concurrency,
-        settings.worker_max_jobs_per_minute,
-        "OK" if redis else "FALHOU",
-    )
+    key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY", "")
+    print(f"[WORKER STARTUP] redis={'OK' if redis else 'FAIL'} openai={'SET('+key[:8]+')' if key else 'EMPTY'}", flush=True)
 
 
 async def shutdown(ctx: dict) -> None:
