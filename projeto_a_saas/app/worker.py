@@ -52,10 +52,33 @@ _MODE_MAP = {
 
 async def run_analysis(ctx: dict, analysis_id: str) -> dict:
     """Job principal — executa a análise pesada e persiste o relatório."""
-    from .config import _read_secret
-    openai_key = _read_secret("OPENAI_API_KEY") or settings.openai_api_key or ""
-    anthropic_key = _read_secret("ANTHROPIC_API_KEY") or settings.anthropic_api_key or ""
-    print(f"[WORKER] analysis={analysis_id[:8]} openai={'SET('+openai_key[:8]+')' if openai_key else 'EMPTY'}", flush=True)
+    import os
+    from pathlib import Path
+
+    # Leitura direta sem helper para isolar o problema
+    _oai_file = Path("/etc/secrets/OPENAI_API_KEY")
+    _secrets_dir = Path("/etc/secrets")
+    openai_key = ""
+    if _oai_file.exists():
+        openai_key = _oai_file.read_text().strip()
+    if not openai_key:
+        openai_key = os.environ.get("OPENAI_API_KEY", "") or settings.openai_api_key or ""
+
+    anthropic_key = ""
+    _ant_file = Path("/etc/secrets/ANTHROPIC_API_KEY")
+    if _ant_file.exists():
+        anthropic_key = _ant_file.read_text().strip()
+    if not anthropic_key:
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "") or settings.anthropic_api_key or ""
+
+    print(
+        f"[WORKER] analysis={analysis_id[:8]} "
+        f"openai={'SET('+openai_key[:8]+')' if openai_key else 'EMPTY'} "
+        f"secrets_dir={_secrets_dir.exists()} "
+        f"oai_file={_oai_file.exists()} "
+        f"files={[f.name for f in _secrets_dir.iterdir()] if _secrets_dir.exists() else []}",
+        flush=True
+    )
 
     llm_config = LLMConfig(
         openai_api_key=openai_key,
