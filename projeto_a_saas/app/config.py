@@ -3,10 +3,23 @@ LegalShield AI 2026 — Projeto A SaaS
 Configurações centrais via Pydantic Settings.
 """
 
+import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _read_secret(name: str) -> Optional[str]:
+    """Lê um segredo de Secret Files do Render (/etc/secrets/<name>)
+    ou de variável de ambiente. Render Secret Files têm prioridade sobre env vars."""
+    secret_path = Path(f"/etc/secrets/{name}")
+    if secret_path.exists():
+        value = secret_path.read_text().strip()
+        if value:
+            return value
+    return os.environ.get(name) or None
 
 
 class Settings(BaseSettings):

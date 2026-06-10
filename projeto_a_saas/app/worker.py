@@ -52,11 +52,10 @@ _MODE_MAP = {
 
 async def run_analysis(ctx: dict, analysis_id: str) -> dict:
     """Job principal — executa a análise pesada e persiste o relatório."""
-    import os
-    openai_key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY", "")
-    anthropic_key = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-    # print() garante saída no stdout do Render (logger.info é filtrado)
-    print(f"[WORKER] analysis={analysis_id[:8]} openai={'SET('+openai_key[:8]+')' if openai_key else 'EMPTY'} settings_key={'SET' if settings.openai_api_key else 'NONE'} env_key={'SET' if os.environ.get('OPENAI_API_KEY') else 'NONE'}", flush=True)
+    from .config import _read_secret
+    openai_key = _read_secret("OPENAI_API_KEY") or settings.openai_api_key or ""
+    anthropic_key = _read_secret("ANTHROPIC_API_KEY") or settings.anthropic_api_key or ""
+    print(f"[WORKER] analysis={analysis_id[:8]} openai={'SET('+openai_key[:8]+')' if openai_key else 'EMPTY'}", flush=True)
 
     llm_config = LLMConfig(
         openai_api_key=openai_key,
@@ -161,10 +160,10 @@ async def run_analysis(ctx: dict, analysis_id: str) -> dict:
 
 
 async def startup(ctx: dict) -> None:
-    import os
+    from .config import _read_secret
     from .services.redis_client import init_redis_pool
     redis = await init_redis_pool()
-    key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY", "")
+    key = _read_secret("OPENAI_API_KEY") or settings.openai_api_key or ""
     print(f"[WORKER STARTUP] redis={'OK' if redis else 'FAIL'} openai={'SET('+key[:8]+')' if key else 'EMPTY'}", flush=True)
 
 
