@@ -18,29 +18,9 @@
 # ---------------------------------------------------------------------------
 # Env Group compartilhado
 # ---------------------------------------------------------------------------
-envVarGroups:
-  - name: legalshield-secrets
-    envVars:
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: ENCRYPTION_MASTER_KEY
-        sync: false
-      - key: CORS_ORIGINS
-        sync: false
-      - key: ADMIN_EMAIL
-        sync: false
-      - key: ADMIN_INITIAL_PASSWORD
-        sync: false
-      - key: R2_ACCOUNT_ID
-        sync: false
-      - key: R2_ACCESS_KEY_ID
-        sync: false
-      - key: R2_SECRET_ACCESS_KEY
-        sync: false
-      - key: R2_BUCKET_NAME
-        value: estjuridico-contratos
+# Segredos (OPENAI_API_KEY, ENCRYPTION_MASTER_KEY, etc.) devem ser
+# adicionados MANUALMENTE no painel do Render em cada serviço.
+# NÃO colocar no render.yaml para evitar reset a cada git push.
 
 databases:
   - name: legalshield-db
@@ -88,16 +68,10 @@ services:
         value: "1800"
       - key: JWT_SECRET_KEY
         generateValue: true
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ENCRYPTION_MASTER_KEY
-        sync: false
-      - key: CORS_ORIGINS
-        sync: false
-      - key: ADMIN_EMAIL
-        sync: false
-      - key: ADMIN_INITIAL_PASSWORD
-        sync: false
+
+      # OPENAI_API_KEY e outros segredos devem ser adicionados
+      # MANUALMENTE no painel do Render (Environment) — não colocar
+      # aqui para evitar que o Blueprint resets o valor a cada deploy.
 
       - key: LLM_PRIMARY_MODEL
         value: openai/gpt-4o
@@ -153,10 +127,9 @@ services:
 
       - key: CONTRACT_CACHE_TTL_SECONDS
         value: "1800"
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ENCRYPTION_MASTER_KEY
-        sync: false
+
+      # OPENAI_API_KEY deve ser adicionada MANUALMENTE no painel do Render
+      # (não colocar aqui — Blueprint resetaria o valor a cada git push)
 
       - key: WORKER_CONCURRENCY
         value: "2"                # menos concorrência para plano starter
