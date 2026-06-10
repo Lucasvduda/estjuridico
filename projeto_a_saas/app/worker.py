@@ -55,30 +55,18 @@ async def run_analysis(ctx: dict, analysis_id: str) -> dict:
     import os
     from pathlib import Path
 
-    # Leitura direta sem helper para isolar o problema
-    _oai_file = Path("/etc/secrets/OPENAI_API_KEY")
-    _secrets_dir = Path("/etc/secrets")
-    openai_key = ""
-    if _oai_file.exists():
-        openai_key = _oai_file.read_text().strip()
-    if not openai_key:
-        openai_key = os.environ.get("OPENAI_API_KEY", "") or settings.openai_api_key or ""
+    def _read_key(name: str) -> str:
+        """Lê chave de Secret File do Render (/etc/secrets/) ou de env var."""
+        p = Path(f"/etc/secrets/{name}")
+        if p.exists():
+            v = p.read_text().strip()
+            if v:
+                return v
+        return os.environ.get(name, "") or ""
 
-    anthropic_key = ""
-    _ant_file = Path("/etc/secrets/ANTHROPIC_API_KEY")
-    if _ant_file.exists():
-        anthropic_key = _ant_file.read_text().strip()
-    if not anthropic_key:
-        anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "") or settings.anthropic_api_key or ""
-
-    print(
-        f"[WORKER] analysis={analysis_id[:8]} "
-        f"openai={'SET('+openai_key[:8]+')' if openai_key else 'EMPTY'} "
-        f"secrets_dir={_secrets_dir.exists()} "
-        f"oai_file={_oai_file.exists()} "
-        f"files={[f.name for f in _secrets_dir.iterdir()] if _secrets_dir.exists() else []}",
-        flush=True
-    )
+    openai_key = _read_key("OPENAI_API_KEY") or settings.openai_api_key or ""
+    anthropic_key = _read_key("ANTHROPIC_API_KEY") or settings.anthropic_api_key or ""
+    logger.info("worker: iniciando análise %s", analysis_id)
 
     llm_config = LLMConfig(
         openai_api_key=openai_key,
@@ -183,11 +171,9 @@ async def run_analysis(ctx: dict, analysis_id: str) -> dict:
 
 
 async def startup(ctx: dict) -> None:
-    from .config import _read_secret
     from .services.redis_client import init_redis_pool
     redis = await init_redis_pool()
-    key = _read_secret("OPENAI_API_KEY") or settings.openai_api_key or ""
-    print(f"[WORKER STARTUP] redis={'OK' if redis else 'FAIL'} openai={'SET('+key[:8]+')' if key else 'EMPTY'}", flush=True)
+    logger.info("worker: iniciado | concurrency=%s, redis=%s", settings.worker_concurrency, "OK" if redis else "FAIL")
 
 
 async def shutdown(ctx: dict) -> None:
