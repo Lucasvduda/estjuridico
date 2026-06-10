@@ -68,10 +68,16 @@ services:
         value: "1800"
       - key: JWT_SECRET_KEY
         generateValue: true
-
-      # OPENAI_API_KEY e outros segredos devem ser adicionados
-      # MANUALMENTE no painel do Render (Environment) — não colocar
-      # aqui para evitar que o Blueprint resets o valor a cada deploy.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ENCRYPTION_MASTER_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_INITIAL_PASSWORD
+        sync: false
 
       - key: LLM_PRIMARY_MODEL
         value: openai/gpt-4o
@@ -127,9 +133,10 @@ services:
 
       - key: CONTRACT_CACHE_TTL_SECONDS
         value: "1800"
-
-      # OPENAI_API_KEY deve ser adicionada MANUALMENTE no painel do Render
-      # (não colocar aqui — Blueprint resetaria o valor a cada git push)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ENCRYPTION_MASTER_KEY
+        sync: false
 
       - key: WORKER_CONCURRENCY
         value: "2"                # menos concorrência para plano starter
